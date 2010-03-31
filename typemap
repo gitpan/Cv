@@ -1,0 +1,95 @@
+# -*- mode: text; coding: utf-8; tab-width: 4; -*-
+TYPEMAP
+float*			T_PTRREF
+const float*	T_PTRREF
+double*			T_PTRREF
+int*			T_PTRREF
+const int*		T_PTRREF
+void*			T_PTRREF
+const void*		T_PTRREF
+
+CvBox2D			T_OPAQUE
+CvBox2D32f		T_OPAQUE
+CvPoint			T_OPAQUE
+CvPoint2D32f	T_OPAQUE
+CvPoint2D32f4	T_OPAQUE
+CvPoint2D32f*	T_PTRREF
+CvPoint3D32f*	T_PTRREF
+CvPoint2D64f*	T_PTRREF
+CvRect			T_OPAQUE
+CvScalar		T_OPAQUE
+CvSize			T_OPAQUE
+CvSlice			T_OPAQUE
+CvTermCriteria	T_OPAQUE
+CvSubdiv2DPoint			T_OPAQUE
+CvSubdiv2DPointLocation	T_OPAQUE
+
+CvArr*			T_PTRREF
+const CvArr*	T_PTRREF
+CvMat*			T_PTRREF
+const CvMat*	T_PTRREF
+IplImage*		T_PTRREF
+const IplImage*	T_PTRREF
+CvCapture*		T_PTRREF
+
+CvMatr32f		T_OPAQUE
+CvVect32f		T_OPAQUE
+
+IplConvKernel*	T_PTRREF
+
+CvFont*			T_PTRREF
+const CvFont*	T_PTRREF
+
+CvMouseCallback		T_CALLBACK
+CvTrackbarCallback	T_CALLBACK
+CvTrackbar*		T_PTRREF
+
+CvRNG			T_OPAQUE
+CvRNG*			T_PTRREF
+
+CvMemStorage*	T_PTRREF
+CvSeq*			T_PTRREF
+const CvSeq*	T_PTRREF
+#CvSeqReader	T_OPAQUE
+CvSeqReader*	T_PTRREF
+CvSetElem*		T_PTR
+const CvSetElem*	T_PTR
+CvConnectedComp*	T_PTRREF
+CvSubdiv2D*		T_PTRREF
+CvSubdiv2DEdge	T_IV
+CvNextEdgeType	T_IV
+
+CvHistogram*		T_PTRREF
+const CvHistogram*	T_PTRREF
+
+CvKalman*		T_PTRREF
+
+CvMoments*		T_PTRREF
+const CvMoments*	T_PTRREF
+CvHuMoments*		T_PTRREF
+const CvHuMoments*	T_PTRREF
+
+CvStereoBMState*		T_PTRREF
+const CvStereoBMState*	T_PTRREF
+CvStereoGCState*		T_PTRREF
+CvPOSITObject*			T_PTRREF
+
+CvBGCodeBookModel*	T_PTRREF
+const CvBGCodeBookModel* T_PTRREF
+CvBGStatModel*		T_PTRREF
+CvFGDStatModelParams*	T_PTRREF
+CvHaarClassifierCascade* T_PTRREF
+
+CvFileStorage*	T_PTRREF
+const CvFileStorage*	T_PTRREF
+CvFileNode*		T_PTRREF
+const CvFileNode*		T_PTRREF
+CvAttrList*	   	T_PTRREF
+CvAttrList	   	T_OPAQUE
+
+############################################################
+INPUT
+
+
+############################################################
+OUTPUT
