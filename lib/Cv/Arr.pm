@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Arr;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -19,11 +18,21 @@ use Cv::CxCore qw(:all);
 
 our @ISA = qw(Exporter);
 
-our $VERSION = '0.02';
+our @EXPORT = (
+	);
+
+our %EXPORT_TAGS = (
+	'all' => [ ]
+	);
+
+our @EXPORT_OK = (
+	@{ $EXPORT_TAGS{'all'} },
+	);
+
+our $VERSION = '0.03';
 
 our %IMAGES = ();
 
-# Preloaded methods go here.
 
 # ######################################################################
 # ### CxCORE ###########################################################
@@ -318,6 +327,64 @@ sub GetDimSize {
 # ------------------------------------------------------------ 
 #  Ptr*D - Return pointer to the particular array element
 # ------------------------------------------------------------
+sub PtrD {
+	my $self = shift;
+	my %av = &argv([ -idx => undef,
+					 -type => undef,
+					 -arr => $self,
+				   ], @_);
+
+	my @idx = defined $av{-idx}? &cvIndex($av{-idx}) : &cvIndex(%av);
+	unless (defined $av{-arr} && @idx > 0) {
+	  usage:
+		chop(my $usage = <<"----"
+usage:	Cv->GetD(
+	-idx0 => The first zero-based component of the element index 
+	-idx1 => The second zero-based component of the element index 
+	-idx2 => The third zero-based component of the element index 
+	-idx => Array of the element indices 
+	-type => Optional output parameter: type of matrix elements
+	-arr => Input array, (default: \$self)
+	)
+----
+			);
+		croak $usage, " = ", &Dumper(\%av);
+	}
+
+	my $r = undef; my $type = undef;
+	$r = cvPtr1D($av{-arr}, @idx, $type) if (@idx == 1);
+	$r = cvPtr2D($av{-arr}, @idx, $type) if (@idx == 2);
+	$r = cvPtr3D($av{-arr}, @idx, $type) if (@idx == 3);
+	goto usage unless (defined $r);
+	goto usage unless (defined $type);
+	if (defined $av{-type} && ref $av{-type} eq 'SCALAR') {
+		${$av{-type}} = $type;
+	}
+	if ($type == CV_8SC1 || $type == CV_8SC2 ||
+		$type == CV_8SC3 || $type == CV_8SC4) {
+		wantarray ? unpack("c*", $r) : [unpack("c*", $r)];
+	} elsif ($type == CV_8UC1 || $type == CV_8UC2 ||
+			 $type == CV_8UC3 || $type == CV_8UC4) {
+		wantarray ? unpack("C*", $r) : [unpack("C*", $r)];
+	} elsif ($type == CV_16SC1 || $type == CV_16SC2 ||
+			 $type == CV_16SC3 || $type == CV_16SC4) {
+		wantarray ? unpack("s*", $r) : [unpack("s*", $r)];
+	} elsif ($type == CV_16UC1 || $type == CV_16UC2 ||
+			 $type == CV_16UC3 || $type == CV_16UC4) {
+		wantarray ? unpack("S*", $r) : [unpack("S*", $r)];
+	} elsif ($type == CV_32SC1 || $type == CV_32SC2 ||
+			 $type == CV_32SC3 || $type == CV_32SC4) {
+		wantarray ? unpack("l*", $r) : [unpack("l*", $r)];
+	} elsif ($type == CV_32FC1 || $type == CV_32FC2 ||
+			 $type == CV_32FC3 || $type == CV_32FC4) {
+		wantarray ? unpack("f*", $r) : [unpack("f*", $r)];
+	} elsif ($type == CV_64FC1 || $type == CV_64FC2 ||
+			 $type == CV_64FC3 || $type == CV_64FC4) {
+		wantarray ? unpack("d*", $r) : [unpack("d*", $r)];
+	} else {
+		goto usage;
+	}
+}
 
 # ------------------------------------------------------------
 #  Get*D - Return the particular array element
@@ -328,10 +395,8 @@ sub GetD {
 					 -arr => $self,
 				   ], @_);
 
-	unless (defined $av{-arr} &&
-			(defined $av{-idx}  || defined $av{-idx0} ||
-			 defined $av{-idx1} || defined $av{-idx2} )
-		) {
+	my @idx = defined $av{-idx}? &cvIndex($av{-idx}) : &cvIndex(%av);
+	unless (defined $av{-arr} && @idx > 0) {
 	  usage:
 		chop(my $usage = <<"----"
 usage:	Cv->GetD(
@@ -345,8 +410,6 @@ usage:	Cv->GetD(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
-
-	my @idx = &cvIndex(%av);
 	my $r = undef;
 	$r = cvGet1D($av{-arr}, @idx) if (@idx == 1);
 	$r = cvGet2D($av{-arr}, @idx) if (@idx == 2);
@@ -379,10 +442,8 @@ sub GetRealD {
 					 -arr => $self,
 				   ], @_);
 
-	unless (defined $av{-arr} &&
-			(defined $av{-idx}  || defined $av{-idx0} ||
-			 defined $av{-idx1} || defined $av{-idx2} )
-		) {
+	my @idx = defined $av{-idx}? &cvIndex($av{-idx}) : &cvIndex(%av);
+	unless (defined $av{-arr} && @idx > 0) {
 		chop(my $usage = <<"----"
 usage:	Cv->GetRealD(
 	-idx0 => The first zero-based component of the element index 
@@ -395,14 +456,12 @@ usage:	Cv->GetRealD(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
-
-	my $idx = &cvIndex(%av);
-	if (@$idx == 1) {
-		cvGetReal1D($av{-arr}, $idx->[0]);
-	} elsif (@$idx == 2) {
-		cvGetReal2D($av{-arr}, $idx->[0], $idx->[1]);
-	} elsif (@$idx == 3) {
-		cvGetReal3D($av{-arr}, $idx->[0], $idx->[1], $idx->[2]);
+	if (@idx == 1) {
+		cvGetReal1D($av{-arr}, @idx);
+	} elsif (@idx == 2) {
+		cvGetReal2D($av{-arr}, @idx);
+	} elsif (@idx == 3) {
+		cvGetReal3D($av{-arr}, @idx);
 	} else {
 		goto usage;
 	}
@@ -437,9 +496,8 @@ sub SetD {
 					 -arr => $self,
 				   ], @_);
 
-	unless (defined $av{-arr} &&
-			(defined $av{-idx} || defined $av{-idx0} ||
-			 defined $av{-idx1} || defined $av{-idx2} ) &&
+	my @idx = defined $av{-idx}? &cvIndex($av{-idx}) : &cvIndex(%av);
+	unless (defined $av{-arr} && @idx > 0 &&
 			defined $av{-value}) {
 		chop(my $usage = <<"----"
 usage:	Cv->SetD(
@@ -454,8 +512,6 @@ usage:	Cv->SetD(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
-
-	my @idx = &cvIndex(%av);
 	my @val = &cvScalar($av{-value});
 	cvSet1D($av{-arr}, @idx, pack("d4", @val)) if (@idx == 1);
 	cvSet2D($av{-arr}, @idx, pack("d4", @val)) if (@idx == 2);
@@ -488,9 +544,8 @@ sub SetRealD {
 					 -arr => $self,
 				   ], @_);
 
-	unless (defined $av{-arr} &&
-			(defined $av{-idx} || defined $av{-idx0} ||
-			 defined $av{-idx1} || defined $av{-idx2} ) &&
+	my @idx = defined $av{-idx}? &cvIndex($av{-idx}) : &cvIndex(%av);
+	unless (defined $av{-arr} && @idx > 0 &&
 			defined $av{-value}) {
 		chop(my $usage = <<"----"
 usage:	Cv->SetRealD(
@@ -502,8 +557,6 @@ usage:	Cv->SetRealD(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
-
-	my @idx = &cvIndex(%av);
 	cvSetReal1D($av{-arr}, @idx, $av{-value}) if (@idx == 1);
 	cvSetReal2D($av{-arr}, @idx, $av{-value}) if (@idx == 2);
 	cvSetReal3D($av{-arr}, @idx, $av{-value}) if (@idx == 3);
@@ -704,11 +757,9 @@ sub Split {
 					 -dst3 => undef,
 					 -src => $self,
 				   ], @_);
-	if (ref $av{-dst} eq 'ARRAY' &&
-		!defined $av{-dst0} && !defined $av{-dst1} &&
-		!defined $av{-dst2} && !defined $av{-dst3}) {
-		($av{-dst0}, $av{-dst1}, $av{-dst2}, $av{-dst3}) = @{$av{-dst}};
-		delete $av{-dst};
+	$av{-dst0} ||= $av{-dst}; delete $av{-dst};
+	if (ref $av{-dst0} eq 'ARRAY') {
+		($av{-dst0}, $av{-dst1}, $av{-dst2}, $av{-dst3}) = @{$av{-dst0}};
 	}
 	if (!defined $av{-src} ||
 		(!defined $av{-dst0} && !defined $av{-dst1} &&
@@ -748,17 +799,15 @@ sub Merge {
 					 -src3 => undef,
 					 -dst => $self,
 				   ], @_);
-	if (ref $av{-src} eq 'ARRAY' &&
-		!defined $av{-src0} && !defined $av{-src1} &&
-		!defined $av{-src2} && !defined $av{-src3}) {
-		($av{-src0}, $av{-src1}, $av{-src2}, $av{-src3}) = @{$av{-src}};
-		delete $av{-src};
+	$av{-src0} ||= $av{-src}; delete $av{-src};
+	if (ref $av{-src0} eq 'ARRAY') {
+		($av{-src0}, $av{-src1}, $av{-src2}, $av{-src3}) = @{$av{-src0}};
 	}
 	if (!defined $av{-dst} || 
 		(!defined $av{-src0} && !defined $av{-src1} &&
 		 !defined $av{-src2} && !defined $av{-src3})) {
 		chop(my $usage = <<"----"
-usage:	Cv->AndS(
+usage:	Cv->Merge(
 	-srcX => Input channels.
 	-dst => Destination array.
 	)
@@ -903,7 +952,7 @@ usage:	Cv->ConvertScale(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
- 	$av{-dst} ||= $av{-src}->new;
+ 	$av{-dst} ||= $av{-src}->new(-depth => IPL_DEPTH_8U);
  	cvConvertScaleAbs(
 		$av{-src},
 		$av{-dst},
@@ -1838,16 +1887,16 @@ usage:	Cv->MinMaxLoc(
 	}
 	if (defined $av{-min_loc}) {
 		if (ref $av{-min_loc} eq 'HASH') {
-			$av{-min_loc} = { 'x' => $min_x, 'y' => $min_y };
+			%{$av{-min_loc}} = ('x' => $min_x, 'y' => $min_y);
 		} elsif (ref $av{-min_loc} eq 'ARRAY') {
-			$av{-min_loc} = [ $min_x, $min_y ];
+			@{$av{-min_loc}} = ($min_x, $min_y);
 		}
 	}
 	if (defined $av{-max_loc}) {
 		if (ref $av{-max_loc} eq 'HASH') {
-			$av{-max_loc} = { 'x' => $max_x, 'y' => $max_y };
+			%{$av{-max_loc}} = ('x' => $max_x, 'y' => $max_y);
 		} elsif (ref $av{-max_loc} eq 'ARRAY') {
-			$av{-max_loc} = [ $max_x, $max_y ];
+			@{$av{-max_loc}} = ($max_x, $max_y);
 		}
 	}
 	my $minmaxloc = {
@@ -2889,7 +2938,7 @@ sub PutText {
 		$font->PutText(-img => $self, %av);
 		$self;
 	} else {
-		carp "can\'t use PutText";
+		carp "can\'t PutText";
 	}
 }
 	
@@ -3077,16 +3126,29 @@ sub ShowImage {
 	my %av = &argv([ -name => undef,
 					 -image => $self,
 				   ], @_);
+	if (blessed($av{-name} ||= $av{-window_name})) {
+		$av{-name} = $av{-name}->name;
+	}
+	unless (eval { $av{-image}->isa('Cv::Arr') }) {
+		chop(my $usage = <<"----"
+usage:	Cv::Arr->ShowImage(
+	-name => Name of the window. 
+	-image => Image to be shown.
+	)
+----
+			);
+		croak $usage, " = ", &Dumper(\%av);
+	}
 	$av{-name} ||= $IMAGES{$av{-image}}{window};
-	if ((blessed($av{-name}) || '') eq 'Cv::Window') {
-		$av{-name}->ShowImage(%av);
+	if (eval { $av{-name}->isa('Cv::Window') }) {
+		$av{-name}->ShowImage(-image => $av{-image});
 	} else {
 		use Cv::Window;
-		if ($av{-name} = Cv::Window->new(%av)) {
-			$IMAGES{$av{-image}}{window} = $av{-name}; # XXXXX
-			$av{-name}->ShowImage(%av);
+		if (my $window = Cv::Window->new(-name => $av{-name})) {
+			($IMAGES{$av{-image}}{window} = $window)
+				->ShowImage(-image => $av{-image});
 		} else {
-			carp "can\'t use ShowImage";
+			carp "can\'t ShowImage";
 		}
 	}
 	$av{-image};
@@ -3141,10 +3203,17 @@ usage:	Cv->Sobel(
 		croak $usage, " = ", &Dumper(\%av);
 	}
 
-#	$av{-dst} ||= $av{-src}->new;
 	unless (blessed($av{-dst})) {
-		my $depth = $av{-src}->depth == &IPL_DEPTH_8U ?
-			&IPL_DEPTH_16S : &IPL_DEPTH_32S;
+		my $depth = $av{-src}->depth;
+		if ($av{-src}->depth == IPL_DEPTH_8U ||
+			$av{-src}->depth == IPL_DEPTH_8S) {
+			$depth = IPL_DEPTH_16S;
+		} elsif ($av{-src}->depth == IPL_DEPTH_16U ||
+				 $av{-src}->depth == IPL_DEPTH_16S) {
+			$depth = IPL_DEPTH_32S;
+		} elsif ($av{-src}->depth == IPL_DEPTH_32S) {
+			$depth = IPL_DEPTH_32F;
+		}
 		$av{-dst} = $av{-src}->new(-depth => $depth, -channels => 1);
 	}
 	cvSobel($av{-src}, $av{-dst},
@@ -3164,7 +3233,6 @@ sub Laplace {
 				   ], @_);
 
 	$av{-src} ||= $av{-image};
-
 	unless (blessed($av{-src}) && defined($av{-aperture_size})) {
 		chop(my $usage = <<"----"
 usage:	Cv::Laplace(
@@ -3177,8 +3245,7 @@ usage:	Cv::Laplace(
 		croak $usage, " = ", &Dumper(\%av);
 	}
 
-	$av{-dst} ||= $av{-edges};
-#	$av{-dst} ||= $av{-src}->new;
+	# $av{-dst} ||= $av{-edges};
 	unless (blessed($av{-dst})) {
 		my $depth = $av{-src}->depth == &IPL_DEPTH_8U ?
 			&IPL_DEPTH_16S : &IPL_DEPTH_32S;
@@ -3402,7 +3469,6 @@ sub GetRectSubPix {
 	$av{-dst};
 }
 
-#=xxx redefined
 # ------------------------------------------------------------
 #  GetQuadrangleSubPix - Retrieves pixel quadrangle from image with
 #  sub-pixel accuracy
@@ -3433,7 +3499,6 @@ sub Affine {
 		);
 	$av{-dst};
 }
-#=cut
 
 
 # ------------------------------------------------------------
@@ -3536,6 +3601,50 @@ usage:	Cv->Remap(
 # ------------------------------------------------------------
 #  LogPolar - Remaps image to log-polar space
 # ------------------------------------------------------------
+sub LogPolar {
+	my $self = shift;
+	my %av = &argv([ -center => undef,
+					 -M => undef,
+					 -flags => &CV_INTER_LINEAR + &CV_WARP_FILL_OUTLIERS,
+					 -dst => undef,
+					 -src => $self,
+				   ], @_);
+	$av{-dst} ||= $av{-src}->new;
+	unless (blessed $av{-src} &&
+			blessed $av{-dst} &&
+			defined $av{-center} &&
+			defined $av{-M} &&
+			defined $av{-flags}) {
+		chop(my $usage = <<"----"
+usage:	Cv->LogPolar(
+	-src => Source image. 
+	-dst => Destination image. 
+	-center => The transformation center, where the output precision is
+	        maximal. 
+	-M => Magnitude scale parameter. See below. 
+	-flags => A combination of interpolation method and the following
+	        optional flags:
+	    * CV_WARP_FILL_OUTLIERS - fill all the destination image pixels. If
+	      some of them correspond to outliers in the source image, they are
+	      set to zeros.
+        * CV_WARP_INVERSE_MAP - indicates that matrix is inverse transform
+	      from destination image to source and, thus, can be used directly
+	      for pixel interpolation. Otherwise, the function finds the inverse
+	      transform from map_matrix. 
+	)
+----
+			);
+		croak $usage, " = ", &Dumper(\%av);
+	}
+	cvLogPolar(
+		$av{-src},
+		$av{-dst},
+		pack("f2", cvPoint($av{-center})),
+		$av{-M},
+		$av{-flags},
+		);
+	$av{-dst};
+}
 
 
 # ======================================================================
@@ -3692,7 +3801,6 @@ usage:	Cv->Smooth(
 }
 
 
-#=xxx redefined
 # ------------------------------------------------------------
 #  Filter2D - Applies linear filter to image
 # ------------------------------------------------------------
@@ -3728,7 +3836,6 @@ sub Filter2D {
 		);
 	$av{-dst};
 }
-#=cut
 
 
 # ------------------------------------------------------------
@@ -4059,7 +4166,6 @@ usage:	Cv->FloodFill(
 }
 
 
-#=xxx redefined
 # ------------------------------------------------------------
 #  FindContours - Finds contours in binary image
 # ------------------------------------------------------------
@@ -4068,7 +4174,6 @@ sub FindContours {
 	use Cv::Contour;
 	Cv::Contour->Find(-image => $self, @_);
 }
-#=cut
 
 # ------------------------------------------------------------
 #  StartFindContours - Initializes contour scanning process
@@ -4135,7 +4240,6 @@ usage:	Cv::Image->Watershed(
 #  1.7. Image and Contour moments
 # ======================================================================
 
-#=xxx redefined
 # ------------------------------------------------------------
 #  Moments - Calculates all moments up to third order of a polygon or
 #          rasterized shape
@@ -4151,13 +4255,11 @@ sub Moments {
 	use Cv::Moments;
 	Cv::Moments->new(-arr => $self, @_);
 }
-#=cut
 
 # ======================================================================
 #  1.8. Special Image Transforms
 # ======================================================================
 
-#=xxx redefined
 # ------------------------------------------------------------
 #  HoughLines2 - Finds lines in binary image using Hough transform
 #  (Cv::HoughLines2)
@@ -4182,7 +4284,6 @@ sub HoughCircles {
 	use Cv::HoughCircles;
 	Cv::HoughCircles->new(%av);
 }
-#=cut
 
 
 # ------------------------------------------------------------
@@ -4444,7 +4545,6 @@ sub BoxPoints { my $class = shift; cvBoxPoints(@_); }
 #  (see Cv::Mat)
 # ------------------------------------------------------------
 
-#=xxx redefined
 sub FitEllipse {
 	my $self = shift;
 	my %av = &argv([ -points => $self,
@@ -4515,7 +4615,6 @@ sub MinAreaRect2 {
 	}
 	$mat->MinAreaRect2;
 }
-#=cut
 
 # ======================================================================
 #  2.3. Planar Subdivisions
@@ -4905,7 +5004,6 @@ usage:	Cv->CalcOpticalFlowPyrLK(
 #  4.1. Object Detection
 # ======================================================================
 
-#=xxx redefined
 # ------------------------------------------------------------
 #  HaarDetectObjects - Detects objects in the image
 #  (Cv::Image)
@@ -4915,7 +5013,6 @@ sub HaarDetectObjects {
 	use Cv::HaarDetectObjects;
 	Cv::HaarDetectObjects->new(-image => $self, @_);
 }
-#=cut
 
 
 # ######################################################################
@@ -4933,6 +5030,60 @@ sub HaarDetectObjects {
 # ------------------------------------------------------------
 #  FindHomography - Finds perspective transformation between two planes
 # ------------------------------------------------------------
+sub FindHomography {
+	my $self = shift;
+	my %av = &argv([ -src_points => undef,
+					 -dst_points => undef,
+					 -homography => undef,
+					 -method => 0,
+					 -ransacReprojThreshold => 0,
+					 -mask => \0,
+				   ], @_);
+	unless (eval { $av{-src_points}->isa('Cv::Mat') } &&
+			eval { $av{-dst_points}->isa('Cv::Mat') } &&
+			eval { $av{-homography}->isa('Cv::Mat') } &&
+			defined $av{-method} &&
+			defined $av{-ransacReprojThreshold} &&
+			(eval { $av{-mask}->isa('Cv::Mat') } ||
+			 eval { ${$av{-mask}} == 0 })
+		) {
+		chop(my $usage = <<"----"
+usage:	Cv->FindHomography(
+	-src_points => Point coordinates in the original plane, 2xN, Nx2, 3xN or
+	        Nx3 array (the latter two are for representation in homogeneous
+	        coordinates), where N is the number of points. 
+	-dst_points => Point coordinates in the destination plane, 2xN, Nx2, 3xN
+	        or Nx3 array (the latter two are for representation in
+	        homogeneous coordinates) 
+	-homography => Output 3x3 homography matrix. 
+	-method => The method used to computed homography matrix. One of:
+	        0 - regular method using all the point pairs
+	        CV_RANSAC - RANSAC-based robust method
+	        CV_LMEDS - Least-Median robust method
+	-ransacReprojThreshold => The maximum allowed reprojection error to
+	        treat a point pair as an inlier. The parameter is only used in
+	        RANSAC-based homography estimation. E.g. if dst_points
+	        coordinates are measured in pixels with pixel-accurate
+	        precision, it makes sense to set this parameter somewhere in the
+	        range ~1..3. 
+	-mask => The optional output mask set by a robust method (CV_RANSAC or
+	        CV_LMEDS). 
+	)
+----
+			);
+		croak $usage, " = ", &Dumper(\%av);
+	}
+	cvFindHomography(
+		$av{-src_points},
+		$av{-dst_points},
+		$av{-homography},
+		$av{-method},
+		$av{-ransacReprojThreshold},
+		$av{-mask},
+		);
+	$av{-homography};
+}
+
 
 # ------------------------------------------------------------
 #  CalibrateCamera2 - Finds intrinsic and extrinsic camera parameters
@@ -4950,73 +5101,71 @@ sub CalibrateCamera2 {
 					 -translation_vectors => \0,
 					 -flags => 0,
 				   ], @_);
-	unless ( blessed $av{-object_points} &&
-			 blessed $av{-image_points} &&
-			 blessed $av{-point_counts} &&
-			 defined $av{-image_size} &&
-			 blessed $av{-intrinsic_matrix} &&
-			 blessed $av{-distortion_coeffs}
-			 ) {
+	unless (eval { $av{-object_points}->isa('Cv::Mat') } &&
+			eval { $av{-image_points}->isa('Cv::Mat') } &&
+			eval { $av{-point_counts}->isa('Cv::Mat') } &&
+			eval { ref $av{-image_size} eq 'ARRAY' ||
+				   ref $av{-image_size} eq 'HASH' } &&
+			eval { $av{-intrinsic_matrix}->isa('Cv::Mat') } &&
+			eval { $av{-distortion_coeffs}->isa('Cv::Mat') } &&
+			(eval { $av{-rotation_vectors}->isa('Cv::Mat') } ||
+			 eval { ${$av{-rotation_vectors}} == 0 }) &&
+			(eval { $av{-translation_vectors}->isa('Cv::Mat') } ||
+			 eval { ${$av{-translation_vectors}} == 0 }) &&
+			defined $av{-flags}
+		) {
 		chop(my $usage = <<"----"
 usage:	Cv->CalibrateCamera2(
-	-object_points => The joint matrix of object points, 3xN or Nx3,
-    where N is the total number of points in all views.
-	-image_points => The joint matrix of corresponding image points,
-    2xN or Nx2, where N is the total number of points in all views.
-	-points_count => Vector containing numbers of points in each 
-    particular view, 1xM or Mx1, where M is the number of a scene views. 
+	-object_points => The joint matrix of object points, 3xN or Nx3, where N
+	        is the total number of points in all views.
+	-image_points => The joint matrix of corresponding image points, 2xN or
+	        Nx2, where N is the total number of points in all views.
+	-points_count => Vector containing numbers of points in each particular
+	        view, 1xM or Mx1, where M is the number of a scene views. 
 	-image_size => Size of the image, used only to initialize intrinsic
-    camera matrix. 
-	-intrinsic_matrix => The output camera matrix (A) [fx 0 cx; 0 fy
-    cy; 0 0 1]. If CV_CALIB_USE_INTRINSIC_GUESS and/or
-    CV_CALIB_FIX_ASPECT_RATIO are specified, some or all of fx, fy, cx,
-    cy must be initialized. 
-	-distortion_coeffs => The output vector of distortion
-    coefficients, 4x1, 1x4, 5x1 or 1x5.
-	-rotation_vectors => The output 3xM or Mx3 array of rotation
-    vectors (compact representation of rotation matrices, see
-    cvRodrigues2).
+            camera matrix. 
+	-intrinsic_matrix => The output camera matrix 
+	        A = [ [ fx 0 cx ], [ 0 fy cy ], [ 0 0 1 ] ].
+	        If CV_CALIB_USE_INTRINSIC_GUESS and/or CV_CALIB_FIX_ASPECT_RATIO
+	        are specified, some or all of fx, fy, cx, cy must be initialized. 
+	-distortion_coeffs => The output vector of distortion coefficients, 4x1,
+	        1x4, 5x1 or 1x5.
+	-rotation_vectors => The output 3xM or Mx3 array of rotation vectors
+	        (compact representation of rotation matrices, see cvRodrigues2).
 	-translation_vectors => The output 3xM or Mx3 array of translation
-	vectors. 
-	-flags => Different flags, may be 0 or combination of the
-    following values:
-    CV_CALIB_USE_INTRINSIC_GUESS - intrinsic_matrix contains valid
-    initial values of fx, fy, cx, cy that are optimized
-    further. Otherwise, (cx, cy) is initially set to the image center
-    (image_size is used here), and focal distances are computed in some
-    least-squares fashion. Note, that if intrinsic parameters are known,
-    there is no need to use this function. Use
-    cvFindExtrinsicCameraParams2 instead.
-
-    CV_CALIB_FIX_PRINCIPAL_POINT - The principal point is not changed
-    during the global optimization, it stays at the center and at the
-    other location specified (when CV_CALIB_FIX_FOCAL_LENGTH - Both fx
-    and fy are fixed.
-
-    CV_CALIB_USE_INTRINSIC_GUESS is set as well).
-
-    CV_CALIB_FIX_ASPECT_RATIO - The optimization procedure consider
-    only one of fx and fy as independent variable and keeps the aspect
-    ratio fx/fy the same as it was set initially in
-    intrinsic_matrix. In this case the actual initial values of (fx,
-    fy) are either taken from the matrix (when
-    CV_CALIB_USE_INTRINSIC_GUESS is set) or estimated somehow (in the
-    latter case fx, fy may be set to arbitrary values, only their
-    ratio is used).
-
-    CV_CALIB_ZERO_TANGENT_DIST - Tangential distortion coefficients
-    are set to zeros and do not change during the optimization.
-
-    CV_CALIB_FIX_K1 - The 0-th distortion coefficient (k1) is fixed
-    (to 0 or to the initial passed value if
-    CV_CALIB_USE_INTRINSIC_GUESS is passed)
-
-    CV_CALIB_FIX_K2 - The 1-st distortion coefficient (k2) is fixed
-    (see above)
-
-    CV_CALIB_FIX_K3 - The 4-th distortion coefficient (k3) is fixed
-    (see above)
-
+	        vectors. 
+	-flags => Different flags, may be 0 or combination of the following
+	        values:
+	    CV_CALIB_USE_INTRINSIC_GUESS -
+	        intrinsic_matrix contains valid initial values of fx, fy, cx, cy
+	        that are optimized further.  Otherwise, (cx, cy) is initially
+	        set to the image center (image_size is used here), and focal
+	        distances are computed in some least-squares fashion. Note, that
+	        if intrinsic parameters are known, there is no need to use this
+	        function. Use cvFindExtrinsicCameraParams2 instead.
+	    CV_CALIB_FIX_PRINCIPAL_POINT -
+	        The principal point is not changed during the global
+	        optimization, it stays at the center and at the other location
+	        specified (when CV_CALIB_FIX_FOCAL_LENGTH - Both fx and fy are
+			fixed. CV_CALIB_USE_INTRINSIC_GUESS is set as well).
+	    CV_CALIB_FIX_ASPECT_RATIO -
+	        The optimization procedure consider only one of fx and fy as
+	        independent variable and keeps the aspect ratio fx/fy the same
+	        as it was set initially in intrinsic_matrix. In this case the
+	        actual initial values of (fx, fy) are either taken from the
+	        matrix (when CV_CALIB_USE_INTRINSIC_GUESS is set) or estimated
+	        somehow (in the latter case fx, fy may be set to arbitrary
+			values, only their ratio is used).
+	    CV_CALIB_ZERO_TANGENT_DIST -
+	        Tangential distortion coefficients are set to zeros and do not
+	        change during the optimization.
+	    CV_CALIB_FIX_K1 -
+	        The 0-th distortion coefficient (k1) is fixed (to 0 or to the
+	        initial passed value if CV_CALIB_USE_INTRINSIC_GUESS is passed)
+	    CV_CALIB_FIX_K2 -
+	        The 1-st distortion coefficient (k2) is fixed (see above)
+	    CV_CALIB_FIX_K3 - The 4-th distortion coefficient (k3) is fixed
+            (see above)
 	)
 ----
 			);
@@ -5041,7 +5190,7 @@ sub Calibration {
 					-chess => undef,
 					-chess_size => undef,
 				  ], @_);
-	#print STDERR Data::Dumper->Dump([%av], [qw(av)]);
+	#print STDERR Data::Dumper->Dump([\%av], [qw(av)]);
 	my $sz = ${$av{-images}}[0]->GetSize;
 	my $mapx = Cv->CreateImage($sz, &IPL_DEPTH_32F, 1);
 	my $mapy = Cv->CreateImage($sz, &IPL_DEPTH_32F, 1);
@@ -5226,7 +5375,10 @@ sub StereoRectify {
 					 -P2 => undef,
 					 -Q => \0,
 					 -flags => &CV_CALIB_ZERO_DISPARITY,
-				   ], @_);
+					 -new_image_size => scalar cvSize(0, 0), # Cv 2.1
+					 -valid_pix_ROI1 => undef, # Cv 2.1
+					 -valid_pix_ROI2 => undef, # Cv 2.1
+					 ], @_);
 	unless (blessed $av{-camera_matrix1} &&
 			blessed $av{-camera_matrix2} &&
 			blessed $av{-dist_coeffs1} &&
@@ -5282,7 +5434,37 @@ usage:	Cv->StereoRectify(
 		$av{-P2},
 		$av{-Q},
 		$av{-flags},
+		pack("i2", cvSize($av{-new_image_size})),
+		my $roi1,				# Cv 2.1
+		my $roi2,				# Cv 2.1
 		);
+
+	if (&CV_MAJOR_VERSION >= 2 && &CV_MINOR_VERSION >= 1) {
+		if (ref $av{-valid_pix_ROI1}) {
+			my ($x, $y, $width, $height) = unpack("i4", $roi1);
+			if (ref $av{-valid_pix_ROI1} eq 'ARRAY') {
+				@{$av{-valid_pix_ROI1}} =
+					($x, $y, $width, $height);
+			} elsif (ref $av{-valid_pix_ROI1} eq 'HASH') {
+				%{$av{-valid_pix_ROI1}} =
+					('x' => $x, 'y' => $y,
+					 'width' => $width,
+					 'height' => $height);
+			}
+		}
+		if (ref $av{-valid_pix_ROI2}) {
+			my ($x, $y, $width, $height) = unpack("i4", $roi2);
+			if (ref $av{-valid_pix_ROI2} eq 'ARRAY') {
+				@{$av{-valid_pix_ROI2}} =
+					($x, $y, $width, $height);
+			} elsif (ref $av{-valid_pix_ROI2} eq 'HASH') {
+				%{$av{-valid_pix_ROI2}} =
+					('x' => $x, 'y' => $y,
+					 'width' => $width,
+					 'height' => $height);
+			}
+		}
+	}
 }
 
 
@@ -5348,8 +5530,9 @@ usage:	Cv->StereoRectifyUncalibrated(
 # ------------------------------------------------------------
 sub Undistort2 {
 	my $self = shift;
-	my %av = &argv([ -intrinsic_matrix =>undef,
-					 -distortion_coeffs =>undef,
+	my %av = &argv([ -intrinsic_matrix => undef,
+					 -distortion_coeffs => undef,
+					 -new_camera_matrix => \0, # Cv 2.1
 					 -dst => undef,
 					 -src => $self,
 				   ], @_);
@@ -5374,6 +5557,7 @@ usage:	Cv->Undistort2(
 		$av{-dst},
 		$av{-intrinsic_matrix},
 		$av{-distortion_coeffs},
+		$av{-new_camera_matrix},
 		);
 	$av{-dst};
 }

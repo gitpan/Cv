@@ -4,6 +4,7 @@
 use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
+use Cv::TieArr;
 use File::Basename;
 use Data::Dumper;
 
@@ -57,14 +58,12 @@ while (1) {
 			$comp_count++;
 		}
 		
-		my $color_tab = Cv->CreateMat(1, 256, 16)->Zero;
-		$color_tab->SetD([ 0 ], [ 0, 0, 0 ]);
-		$color_tab->SetD([ 1 ], [ 255, 255, 255 ]);
-		foreach (2 .. $comp_count + 1) {
-			$color_tab->SetD([ $_ ], [ 180*rand() + 50, 180*rand() + 50,
-									   180*rand() + 50 ]);
-		}
-		
+		tie my @color_tab, 'Cv::TieArr',
+			my $color_tab = Cv->CreateMat(1, 256, 16)->Zero;
+		@color_tab[0, 1] = ([ 0, 0, 0 ], [ 255, 255, 255 ]);
+		$color_tab[$_] = [ rand(180) + 50, rand(180) + 50, rand(180) + 50 ]
+			foreach (2 .. $comp_count + 1);
+
 		my $wshed =
 			$img0->Watershed(-markers => $markers)
 			->ConvertScale(

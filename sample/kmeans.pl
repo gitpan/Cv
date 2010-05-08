@@ -4,6 +4,7 @@
 use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
+use Cv::TieArr;
 use List::Util qw(min);
 
 my $MAX_CLUSTERS = 5;
@@ -27,7 +28,9 @@ while (1) {
 	my $cluster_count = $rng->RandInt % $MAX_CLUSTERS + 1;
 	my $sample_count = $rng->RandInt % 1000 + $MAX_CLUSTERS;
 	my $points   = Cv->CreateMat(-rows => $sample_count, -type => CV_32FC2);
+	tie my @points, 'Cv::TieArr', $points;
 	my $clusters = Cv->CreateMat(-rows => $sample_count, -type => CV_32SC1);
+	tie my @clusters, 'Cv::TieArr', $clusters;
 
 	# generate random sample from multigaussian distribution
 	for (my $k = 0; $k < $cluster_count; $k++) {
@@ -59,10 +62,9 @@ while (1) {
 	for (my $i = 0; $i < $sample_count / 2; $i++) {
 		my $i1 = $rng->RandInt % $sample_count;
 		my $i2 = $rng->RandInt % $sample_count;
-		my $pt1 = $points->GetD($i1);
-		my $pt2 = $points->GetD($i2);
-		$points->SetD($i1, $pt2);
-		$points->SetD($i2, $pt1);
+		($points[$i2][0],
+		 $points[$i1][0]) =	($points[$i1][0],
+							 $points[$i2][0]);
 	}
 	$points->KMeans2(
 		-labels => $clusters,
@@ -74,9 +76,9 @@ while (1) {
 		));
 	$img->Zero;
 	for (my $i = 0; $i < $sample_count; $i++) {
-		my $cluster_idx = $clusters->GetD($i)->[0];
+		my $cluster_idx = $clusters[$i][0]->[0];
 		$img->Circle(
-			-center => scalar $points->GetD($i),
+			-center => $points[$i][0],
 			-radius => 2,
 			-color => $color_tab[$cluster_idx],
 			-thickness => &CV_FILLED,

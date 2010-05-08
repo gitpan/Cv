@@ -1,4 +1,5 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
+
 package Cv::HaarDetectObjects;
 
 use 5.008000;
@@ -18,7 +19,7 @@ use Cv::Seq;
 
 our @ISA = qw(Cv::Seq);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # ------------------------------------------------------------
 #  HaarDetectObjects - Detects objects in the image

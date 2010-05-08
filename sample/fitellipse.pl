@@ -57,7 +57,7 @@ exit 0;
 
 sub process_image {
 	# Create dynamic structure
-	my $stor = Cv::MemStorage->new;
+	my $stor = Cv->CreateMemStorage;
 
 	# Threshold the source image. This needful for cvFindontours().
 	my $image02 = $image03->Threshold(

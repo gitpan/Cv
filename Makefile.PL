@@ -14,12 +14,13 @@ WriteMakefile(
     PREREQ_PM         => {
 	Data::Dumper => 2.121,
 	Scalar::Util => 1.18,
-	File::Basename => 2.7.4,
+	File::Basename => 2.71,
 	List::Util => 1.19,
 	Time::HiRes => 1.9707,
 	Test::File => 1.29,
 	Test::More => 0,
 	Test::Output => 0.12,
+	Test::Number::Delta => 0,
     }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Cv.pm', # retrieve abstract from module
@@ -28,9 +29,7 @@ WriteMakefile(
     CCFLAGS           => $ccflags,
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
-	# Un-comment this if you add C files to link with later:
-    # OBJECT            => '$(O_FILES)', # link all the C files too
-    #clean             => { FILES => [ 'const-c.inc', 'const-xs.inc' ] },
+    clean             => { FILES => [ '_Inline', 'cover_db' ] },
 );
 
 sub MY::postamble {

@@ -47,6 +47,9 @@ $win->CreateTrackbar(
 	-on_change => undef, -callback => undef,
 	);
 
+eval { $win->SetTrackbarPos(-trackbar_name => 'unknown', -pos => 50) };
+ok(1, 'undefined trackbar');
+
 my @av = (-trackbar_name => 'Trackbar', -window_name => $win,
 		  -value => 5, -count => 10, -on_change => sub { });
 use Cv::Window;

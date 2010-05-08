@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Constant;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -1339,7 +1338,7 @@ our @EXPORT_OK = (
 	@{ $EXPORT_TAGS{'all'} },
 	);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 

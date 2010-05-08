@@ -67,7 +67,7 @@ ok($hist, 'Cv::Histogram->new');
 		eval { $hist->ScaleHist(-src => undef) };
 		like($@, qr/usage:/, 'ScaleHist(usage)');
 		$hist = $hist->ScaleHist(-scale => $dst->GetSize->[1]/$mm->{max}{val});
-		$hist->Scale(-scale => $dst->GetSize->[1]/$mm->{max}{val});
+		$hist->Scale(-scale => $dst->GetSize->[1]/$mm->{max}{val}, -dst => $hist);
 	}
 }
 
@@ -201,7 +201,7 @@ my @himages = map { Cv->new([$width, $height], 8, 3)->Zero->Not } (0..2);
 my @mm = map { $_->GetMinMaxHistValue } @hists;
 
 map {
-	$hists[$_]->ScaleHist(-scale => $height/$mm[$_]->{max}{val})
+	$hists[$_] = $hists[$_]->ScaleHist(-scale => $height/$mm[$_]->{max}{val})
 		if $mm[$_]->{max}{val};
 } (0..2);
 

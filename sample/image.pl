@@ -32,24 +32,21 @@ Cv->CvtColor(-src => $img, -dst => $img_yuv, -code => CV_BGR2YCrCb);
 
 # another method to create an image - from scratch
 my $y = $img->new(-depth => IPL_DEPTH_8U, -channels => 1);
+$img_yuv->Split(-dst0 => $y);
 my $noise = $img->new(-depth => IPL_DEPTH_32F, -channels => 1);
 
-Cv->Split(-src => $img_yuv, -dst => [ $y, undef, undef, undef ]);
-$rng->RandArr(
-    -arr => $noise,
-    -dist_type => CV_RAND_NORMAL,
-    -param1 => scalar cvScalarAll(0),
-    -param2 => scalar cvScalarAll(20),
-    );
-$noise->Smooth(
-    -dst => $noise,
-    -smoothtype => CV_GAUSSIAN,
-    -size1 => 5, -size2 => 5,
-    -sigma1 => 1, -sigma2 => 1,
-    );
-$noise->Acc(-image => $y)
-    ->Convert(-dst => $y);
-Cv->Merge(-src => [ $y, undef, undef, undef ], -dst => $img_yuv)
+$rng->RandArr(-arr => $noise,
+			  -dist_type => CV_RAND_NORMAL,
+			  -param1 => scalar cvScalarAll(0),
+			  -param2 => scalar cvScalarAll(20))
+	->Smooth(-dst => $noise,
+			 -smoothtype => CV_GAUSSIAN,
+			 -size1 => 5, -size2 => 5,
+			 -sigma1 => 1, -sigma2 => 1)
+	->Acc(-image => $y)
+	->Convert(-dst => $y);
+
+$img_yuv->Merge(-src0 => $y)
 	->CvtColor(-dst => $img, -code => CV_YCrCb2BGR);
 
 # show method is the conveninient form of cvShowImage

@@ -28,9 +28,7 @@ ok($win, 'NamedWindow 1');
 
 $win->ShowImage($img);
 $win->SetMouseCallback(
-	-callback => sub {
-		print STDERR join(', ', @_), "\n";
-	},
+	-callback => sub { print STDERR join(', ', @_), "\n" },
 	-param => \0);
 my $win2 = Cv->NamedWindow(-name => 'win', -flags => 0);
 ok($win2, 'NamedWindow 2');
@@ -58,13 +56,18 @@ my $fruits = Cv->LoadImage(
     -filename => dirname($0).'/'."fruits.jpg",
     -flags => CV_LOAD_IMAGE_COLOR);
 ok($fruits, 'LoadImage');
+ok($win->can('ShowImage'), "Cv::Window can ShowImage");
 $win->ShowImage($fruits);
-$win->WaitKey(1000);
+$win->WaitKey(500);
 
-#stderr_like(sub { $fruits->ShowImage }, qr/can\'t/, 'ShowImage');
-#$fruits->NamedWindow('Cv')->ShowImage;
+ok($fruits->can('ShowImage'), "Cv::Arr can ShowImage");
+$fruits->NamedWindow('Cv')->ShowImage;
+$win->WaitKey(500);
+
+ok($fruits->can('show'), "Cv::Arr can show");
 $fruits->NamedWindow('Cv')->show;
-$win->WaitKey(1000);
+$win->WaitKey(500);
+
 my $t0 = gettimeofday;
 $fruits->WaitKey(1000);
 my $t1 = gettimeofday;

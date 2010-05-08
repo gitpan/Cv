@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::HoughCircles;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -20,7 +19,7 @@ use Cv::Seq;
 
 our @ISA = qw(Cv::Seq);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 

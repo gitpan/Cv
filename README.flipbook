@@ -1,0 +1,18 @@
+we can use flipbooks as follows:
+
+  flipbook/
+    1.png
+    2.png
+    3.png
+    ...
+
+ my $flipbook = Cv->CreateCameraCapture("/path/to/directory");
+ while (my $frame = $flipbook->QueryFrame) {
+   $frame->ShowImage;
+   Cv->WaitKey(33);  # 30fps
+ }
+
+The flipbook is one of the animations.  It is very primitive.  I think
+this interface is the easiest way to operate animations.
+
+Yuta

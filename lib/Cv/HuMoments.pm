@@ -1,4 +1,5 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
+
 package Cv::HuMoments;
 
 use 5.008000;
@@ -15,7 +16,7 @@ BEGIN {
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # ======================================================================
 #  1.7. Image and Contour moments

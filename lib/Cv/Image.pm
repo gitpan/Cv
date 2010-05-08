@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Image;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -16,11 +15,12 @@ BEGIN {
 
 use Cv::Constant;
 use Cv::CxCore qw(:all);
+use Cv::Arr qw(:all);
 use Cv::Mat;
 
 our @ISA = qw(Cv::Mat);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -231,7 +231,6 @@ usage:	Cv->CloneImage(
 		croak $usage, " = ", &Dumper(\%av);
 	}
 	if (my $phys = cvCloneImage($av{-image})) {
-		# my $image = bless $phys, blessed $self || $self;
 		my $image = bless $phys;
 		$Cv::Arr::IMAGES{$image} = { };
 		$image;
@@ -480,6 +479,9 @@ sub LoadImage {
 	my %av = &argv([ -filename => undef,
 					 -flags => &CV_LOAD_IMAGE_COLOR,
 				   ], @_);
+	if (defined $av{-iscolor}) {
+		$av{-flags} = $av{-iscolor};
+	}
 	unless (defined $av{-filename} &&
 			defined $av{-flags}) {
 		chop(my $usage = <<"----"

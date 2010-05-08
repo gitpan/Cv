@@ -44,8 +44,8 @@ sub Calibrate {
 	my $ALL_POINTS = $IMAGE_NUM * $PAT_SIZE;
 	my $CHESS_SIZE = 24.0;			# パターン1マスの1辺サイズ[mm]
 	
-	my $object_points = Cv::Mat->new($ALL_POINTS, 1, CV_32FC3);
-#	my $object_points = Cv::Mat->new($ALL_POINTS, 3, CV_32FC1);
+	my $object_points = Cv->CreateMat($ALL_POINTS, 1, CV_32FC3);
+#	my $object_points = Cv->CreateMat($ALL_POINTS, 3, CV_32FC1);
 	
 	for my $i (0 .. $IMAGE_NUM-1) {
 		for my $j (0 .. $PAT_ROW-1) {
@@ -63,8 +63,8 @@ sub Calibrate {
 	}
 
 	# (3) チェスボード（キャリブレーションパターン）のコーナー検出
-	my $image_points = Cv::Mat->new($ALL_POINTS, 1, CV_32FC2); # corners
-	my $point_counts = Cv::Mat->new($IMAGE_NUM,  1, CV_32SC1); # p_count;
+	my $image_points = Cv->CreateMat($ALL_POINTS, 1, CV_32FC2); # corners
+	my $point_counts = Cv->CreateMat($IMAGE_NUM,  1, CV_32SC1); # p_count;
 	
 	my $pattern_size = [$PAT_COL, $PAT_ROW];
 	my @corners = ();
@@ -121,10 +121,10 @@ sub Calibrate {
 	exit -1 if ($found_num != $IMAGE_NUM);
 
 	# (5) 内部パラメータ，歪み係数の推定
-	my $intrinsic   = Cv::Mat->new(3, 3, CV_32FC1);
-	my $rotation    = Cv::Mat->new(1, 3, CV_32FC1);
-	my $translation = Cv::Mat->new(1, 3, CV_32FC1);
-	my $distortion  = Cv::Mat->new(1, 4, CV_32FC1);
+	my $intrinsic   = Cv->CreateMat(3, 3, CV_32FC1);
+	my $rotation    = Cv->CreateMat(1, 3, CV_32FC1);
+	my $translation = Cv->CreateMat(1, 3, CV_32FC1);
+	my $distortion  = Cv->CreateMat(1, 4, CV_32FC1);
 
 	Cv->CalibrateCamera2(
 		-object_points     => $object_points,
@@ -136,9 +136,9 @@ sub Calibrate {
 		);
 
 	# (6) 外部パラメータの推定
-	my $sub_image_points = Cv::Mat->new($PAT_SIZE, 1, CV_32FC2);
-	my $sub_object_points = Cv::Mat->new($PAT_SIZE, 1, CV_32FC3);
-#	my $sub_object_points = Cv::Mat->new($PAT_SIZE, 3, CV_32FC1);
+	my $sub_image_points = Cv->CreateMat($PAT_SIZE, 1, CV_32FC2);
+	my $sub_object_points = Cv->CreateMat($PAT_SIZE, 1, CV_32FC3);
+#	my $sub_object_points = Cv->CreateMat($PAT_SIZE, 3, CV_32FC1);
 	my $base = 0;
 	$image_points->GetRows(
 		-submat    => $sub_image_points,

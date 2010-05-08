@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Histogram;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -17,7 +16,7 @@ BEGIN {
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -432,9 +431,7 @@ sub ScaleHist {
 					-shift => 0,
 				  ], @_);
 
-	$av{-dst} ||= $self;
-
-	unless (defined $av{-src} && defined $av{-dst}) {
+	unless (defined $av{-src}) {
 		chop(my $usage = <<"----"
 usage:	Cv->Scale(
 	-src => Source histograms.
@@ -446,6 +443,8 @@ usage:	Cv->Scale(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
+	$av{-dst} ||= $av{-src}->Copy;
+
  	cvScaleHist($av{-src}, $av{-dst}, $av{-scale}, $av{-shift});
  	$av{-dst};
 }

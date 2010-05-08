@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Mat;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -20,7 +19,7 @@ use Cv::Arr;
 
 our @ISA = qw(Cv::Arr);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -242,6 +241,7 @@ sub ContourArea {
 	my $self = shift;
 	my %av = argv([ -slice => &CV_WHOLE_SEQ,
 					-contour => $self,
+					-oriented => 0,	# Cv 2.1
 				  ], @_);
 	unless (defined($av{-contour}) &&
 			defined($av{-slice})) {
@@ -258,6 +258,7 @@ usage:	Cv::Mat->ContourArea(
 	cvContourArea(
 		$av{-contour},
 		pack("i2", cvSlice($av{-slice})),
+		$av{-oriented},
 		);
 }
 

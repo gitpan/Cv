@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Capture;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -21,7 +20,7 @@ use Cv::Image;
 
 our @ISA = qw(Cv::Image);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 our %FLIPBOOK = ();
 
@@ -59,34 +58,6 @@ our %PROPERTIES = (
 # ------------------------------------------------------------
 #  cvCreateFileCapture - Initializes capturing video from file
 # ------------------------------------------------------------
-=xxx
-sub new {
-    my $class = shift;
-	if (defined $_[0]) {
-		if (blessed $class) {
-			Cv::Image::new($class, @_); # XXXXX
-		} elsif ($_[0] =~ /^-/) {
-			my %av = &argv(@_);
-			if (defined $av{-index}) {
-				CreateCameraCapture($class, @_);
-			} elsif (defined $av{-filename}) {
-				CreateFileCapture($class, @_);
-			} else {
-				undef;
-			}
-		} elsif ($_[0] =~ /^\d/) {
-			CreateCameraCapture($class, @_);
-		} elsif (-f $_[0] || -d $_[0]) {
-			CreateFileCapture($class, @_);
-		} else {
-			undef;
-		}
-	} else {
-		undef;
-	}
-}
-=cut
-
 sub CreateFileCapture {
     my $class = shift;
 	my %av = &argv([ -filename => undef,
@@ -110,7 +81,9 @@ usage:	Cv::Capture->CreateFileCapture (
 		$av{-flags} ||= &CV_LOAD_IMAGE_COLOR;
 		if (my $files = list($av{-filename}, $av{-pattern})) {
 			if (@$files > 0) {
-				if (my $image = cvLoadImage($files->[0], $av{-flags})) {
+				if (my $image = Cv->LoadImage(
+						-filename => $files->[0],
+						-flags => $av{-flags})) {
 					$self = bless $image, $class;
 					$FLIPBOOK{$self} = {
 						files => $files,
@@ -119,8 +92,8 @@ usage:	Cv::Capture->CreateFileCapture (
 				}
 			}
 		}
-	} elsif (-d $av{-filename}) {
-		if (my $phys = cvCreateFileCapture($av{-index})) {
+	} elsif (-f $av{-filename}) {
+		if (my $phys = cvCreateFileCapture($av{-filename})) {
 			$self = bless $phys, $class;
 		}
 	} else {
@@ -131,7 +104,6 @@ usage:	Cv::Capture->CreateFileCapture (
 
 sub list { 
 	my $dir = shift;
-	my $i = length($dir);
 	my @files = ();
 	foreach (@_) {
 		if (ref $_) {

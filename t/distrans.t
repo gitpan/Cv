@@ -28,7 +28,6 @@ my $dist8u1 = $gray->CloneImage;
 my $dist8u2 = $gray->CloneImage;
 my $dist8u = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_8U, 3 );
 my $dist32s = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32S, 1 );
-#my $edge = $gray->CloneImage;
 my $labels = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32S, 1 );
 
 my $build_voronoi = 0;
@@ -99,57 +98,34 @@ sub on_trackbar {
 				   [   0,   0, 255 ],
 				   [ 255,   0, 255 ],
 		);
-    
     my $msize = $mask_size;
     my $_dist_type = $build_voronoi ? CV_DIST_L2 : $dist_type;
     my $edge = $gray->Threshold(-threshold => $edge_thresh,
 								-max_value => $edge_thresh,
 								-threshold_type => CV_THRESH_BINARY);
-
-    $msize = CV_DIST_MASK_5 if ( $build_voronoi );
-
-    if ( $_dist_type == CV_DIST_L1 ) {
-		$edge->DistTransform(-dst => $edge,
+    $msize = CV_DIST_MASK_5 if ($build_voronoi);
+    if ($_dist_type == CV_DIST_L1) {
+		$edge->DistTransform(-dst => $dist,
 							 -distance_type => $_dist_type,
 							 -mask_size => $msize);
-        $edge->Convert(-dst => $dist);
     } else {
 		$edge->DistTransform(-dst => $dist,
 							 -distance_type => $_dist_type,
 							 -mask_size => $msize,
-							 -mask => \0,
 							 -labels => $build_voronoi ? $labels : \0);
 	}
-    unless ( $build_voronoi ) {
-
+    unless ($build_voronoi) {
         # begin "painting" the distance transform result
         $dist->ConvertScale(-scale =>  5000, -shift => 0)->Pow(0.5)
 			->ConvertScale(-scale => 1.0, -shift => 0.5, -dst => $dist32s);
-
         $dist32s->AndS(-value => scalar cvScalarAll(255), -dst => $dist32s)
 			->ConvertScale(-scale => 1, -shift => 0, -dst => $dist8u1);
-
 		$dist32s->ConvertScale(-scale => -1, -shift => 0, -dst => $dist32s)
 			->AddS(-value => scalar cvScalarAll(255), -dst => $dist32s)
 			->ConvertScale(-scale => 1, -shift => 0, -dst => $dist8u2);
-
         $dist8u->Merge(-src0 => $dist8u1, -src1 => $dist8u2, -src2 => $dist8u2);
-
-        #$dist->ConvertScale(-dst => $dist, -scale =>  5000, -shift => 0);
-        #$dist->Pow(0.5);
-    
-        #$dist->ConvertScale(-dst => $dist32s, -scale => 1.0, -shift => 0.5);
-        #$dist32s->AndS(scalar cvScalarAll(255));
-        #$dist32s->ConvertScale(-dst => $dist8u1, -scale =>  1, -shift => 0);
-		#$dist32s->ConvertScale(-dst => $dist32s, -scale => -1, -shift => 0);
-        #$dist32s->AddS(scalar cvScalarAll(255));
-		#$dist32s->ConvertScale(-dst => $dist8u2, -scale => 1, -shift => 0);
-        #$dist8u->Merge(-src0 => $dist8u1, -src1 => $dist8u2, -src2 => $dist8u2);
-
         # end "painting" the distance transform result
-
     } else {
-
 		my @ll = unpack("L*", $labels->GetImageData);
 		my @dd = unpack("L*", $dist->GetImageData);
 		my $d;

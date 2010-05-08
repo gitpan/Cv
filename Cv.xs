@@ -13,7 +13,9 @@ extern "C" {
 
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #include <opencv/cvaux.h>
+#endif
 
 #define DIM(x) (sizeof(x)/sizeof((x)[0]))
 #ifndef max
@@ -206,8 +208,6 @@ typedef struct {
 
 
 MODULE = Cv		PACKAGE = Cv::CxCore
-
-INCLUDE: Cv-Struct.inc
 
 # #####################################################################
 #  get Cv version
@@ -596,6 +596,53 @@ cvGetDims(arr)
 #------------------------------------------------------------
 # Ptr*D
 #------------------------------------------------------------
+SV *
+cvPtr1D(arr, idx0, type)
+	INPUT:
+		const CvArr* arr
+		int idx0
+		int type = NO_INIT
+	CODE:
+		CvRect roi = cvGetImageROI((const IplImage *)arr);
+		int w = roi.width ? roi.width  : ((const IplImage *)arr)->width;
+		char *s = cvPtr1D(arr, idx0, &type);
+		RETVAL = newSVpvn(s, w*CV_ELEM_SIZE(type));
+	OUTPUT:
+		RETVAL
+		type
+
+SV *
+cvPtr2D(arr, idx0, idx1, type)
+	INPUT:
+		const CvArr* arr
+		int idx0
+		int idx1
+		int type = NO_INIT
+	CODE:
+		CvRect roi = cvGetImageROI((const IplImage *)arr);
+		int w = roi.width ? roi.width  : ((const IplImage *)arr)->width;
+		char *s = cvPtr2D(arr, idx0, idx1, &type);
+		RETVAL = newSVpvn(s, w*CV_ELEM_SIZE(type));
+	OUTPUT:
+		RETVAL
+		type
+
+SV *
+cvPtr3D(arr, idx0, idx1, idx2, type)
+	INPUT:
+		const CvArr* arr
+		int idx0
+		int idx1
+		int idx2
+		int type = NO_INIT
+	CODE:
+		CvRect roi = cvGetImageROI((const IplImage *)arr);
+		int w = roi.width ? roi.width  : ((const IplImage *)arr)->width;
+		char *s = cvPtr3D(arr, idx0, idx1, idx2, &type);
+		RETVAL = newSVpvn(s, w*CV_ELEM_SIZE(type));
+	OUTPUT:
+		RETVAL
+		type
 
 #------------------------------------------------------------
 # Get*D
@@ -694,6 +741,40 @@ cvSetND(arr, idx, value)
 		CvArr* arr
 		int *idx
 		CvScalar value
+
+
+void
+cvSet1Dx(arr, idx0, value)
+	INPUT:
+		const CvArr* arr
+		int idx0
+		SV* value
+	CODE:
+		char *d = cvPtr1D(arr, idx0, NULL);
+		memcpy(d, sv_pv(value), sv_len(value));
+
+void
+cvSet2Dx(arr, idx0, idx1, value)
+	INPUT:
+		const CvArr* arr
+		int idx0
+		int idx1
+		SV* value
+	CODE:
+		char *d = cvPtr2D(arr, idx0, idx1, NULL);
+		memcpy(d, sv_pv(value), sv_len(value));
+
+void
+cvSet3Dx(arr, idx0, idx1, idx2, value)
+	INPUT:
+		const CvArr* arr
+		int idx0
+		int idx1
+		int idx2
+		SV* value
+	CODE:
+		char *d = cvPtr3D(arr, idx0, idx1, idx2, NULL);
+		memcpy(d, sv_pv(value), sv_len(value));
 
 #------------------------------------------------------------
 # SetReal*D
@@ -1536,6 +1617,7 @@ cvLog(src, dst)
 # SolveCubic
 #------------------------------------------------------------
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # SolvePoly
 #------------------------------------------------------------
@@ -1546,9 +1628,7 @@ cvSolvePoly(coeffs, roots, maxiter, fig)
 		CvMat *roots
 		int maxiter
 		int fig
-#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MAJOR_MINOR > 0
-	CODE:
-		cvSolvePoly(coeffs, roots, maxiter, fig);
+
 #endif
 
 #------------------------------------------------------------
@@ -2983,6 +3063,14 @@ cvRemap(src, dst, mapx, mapy, flags, fillval)
 #------------------------------------------------------------
 # LogPolar
 #------------------------------------------------------------
+void
+cvLogPolar(src, dst, center, M, flags)
+	INPUT:
+		const CvArr* src
+		CvArr* dst
+		CvPoint2D32f center
+		double M
+		int flags
 
 #------------------------------------------------------------
 # CreateStructuringElementEx
@@ -3735,10 +3823,20 @@ cvBoundingRect(points, update)
 # ContourArea
 #------------------------------------------------------------
 double
-cvContourArea(contour, slice)
+cvContourArea(contour, slice, oriented)
 	INPUT:
 		const CvArr* contour
 		CvSlice slice
+		int oriented
+	CODE:
+#if CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1
+		RETVAL = cvContourArea(contour, slice, oriented);
+#else
+		RETVAL = cvContourArea(contour, slice);
+#endif
+	OUTPUT:
+		RETVAL
+
 
 #------------------------------------------------------------
 # ArcLength
@@ -4014,7 +4112,7 @@ cvSubdiv2DLocate(subdiv, pt, edge, vertex)
 	INPUT:
 		CvSubdiv2D* subdiv
 		CvPoint2D32f pt
-		CvSubdiv2DEdge edge
+		CvSubdiv2DEdge edge = NO_INIT
 		SV* vertex
 	CODE:
 		CvSubdiv2DPoint* p = 0;
@@ -4388,6 +4486,7 @@ cvHaarDetectObjects(image, cascade, storage, scale_factor, min_neighbors, flags,
 # cvRunHaarClassifierCascade
 #------------------------------------------------------------
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # ProjectPoints2
 #------------------------------------------------------------
@@ -4420,6 +4519,7 @@ cvFindHomography(src_points, dst_points, homography, method, ransacReprojThresho
 		double ransacReprojThreshold
 		CvMat* mask
 
+#endif
 
 #------------------------------------------------------------
 # CalibrateCamera2
@@ -4475,6 +4575,7 @@ cvFindExtrinsicCameraParams2(object_points, image_points, intrinsic_matrix, dist
 #endif
 
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # StereoCalibrate
 #------------------------------------------------------------
@@ -4502,7 +4603,8 @@ cvStereoCalibrate(object_points, image_points1, image_points2, point_counts, cam
 # StereoRectify
 #------------------------------------------------------------
 void
-cvStereoRectify(camera_matrix1, camera_matrix2, dist_coeffs1, dist_coeffs2, image_size, R, T, R1, R2, P1, P2, Q, flags)
+cvStereoRectify(camera_matrix1, camera_matrix2, dist_coeffs1, dist_coeffs2, image_size, R, T, R1, R2, P1, P2, Q, flags,	alpha, new_image_size, valid_pix_ROI1, valid_pix_ROI2)
+
 	INPUT:
 		const CvMat* camera_matrix1
 		const CvMat* camera_matrix2
@@ -4517,6 +4619,28 @@ cvStereoRectify(camera_matrix1, camera_matrix2, dist_coeffs1, dist_coeffs2, imag
 		CvMat* P2
 		CvMat* Q
 		int flags
+		double alpha
+		CvSize new_image_size
+		CvRect valid_pix_ROI1
+		CvRect valid_pix_ROI2
+	CODE:
+#if CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1
+		cvStereoRectify(camera_matrix1, camera_matrix2,
+					dist_coeffs1, dist_coeffs2, image_size,
+					R, T, R1, R2, P1, P2, Q, flags,
+					alpha, new_image_size,
+					&valid_pix_ROI1, &valid_pix_ROI2);
+#else
+		cvStereoRectify(camera_matrix1, camera_matrix2,
+					dist_coeffs1, dist_coeffs2, image_size,
+					R, T, R1, R2, P1, P2, Q, flags);
+#endif
+	OUTPUT:
+		valid_pix_ROI1
+		valid_pix_ROI2
+		
+
+
 
 #------------------------------------------------------------
 # StereoRectifyUncalibrated
@@ -4531,6 +4655,8 @@ cvStereoRectifyUncalibrated(points1, points2, F, image_size, H1, H2, threshold)
 		CvMat* H1
 		CvMat* H2
 		double threshold
+
+#endif
 
 #------------------------------------------------------------
 # Rodrigues2
@@ -4547,12 +4673,24 @@ cvRodrigues2(src, dst, jacobian)
 # Undistort2
 #------------------------------------------------------------
 void
-cvUndistort2(src, dst, intrinsic_matrix, distortion_coeffs)
+cvUndistort2(src, dst, intrinsic_matrix, distortion_coeffs, new_camera_matrix)
 	INPUT:
 		const CvArr* src
 		CvArr* dst
 		const CvMat* intrinsic_matrix
 		const CvMat* distortion_coeffs
+		const CvMat* new_camera_matrix
+	CODE:
+#if CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1
+		cvUndistort2(src, dst,
+					 intrinsic_matrix,
+					 distortion_coeffs,
+					 new_camera_matrix);
+#else
+		cvUndistort2(src, dst,
+					 intrinsic_matrix,
+					 distortion_coeffs);
+#endif
 
 
 #------------------------------------------------------------
@@ -4567,6 +4705,7 @@ cvInitUndistortMap(camera_matrix, distortion_coeffs, mapx, mapy)
 		CvArr* mapy
 
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # InitUndistortRectifyMap
 #------------------------------------------------------------
@@ -4592,6 +4731,8 @@ cvUndistortPoints(src, dst, camera_matrix, dist_coeffs, R, P)
 		const CvMat* dist_coeffs
 		const CvMat* R
 		const CvMat* P
+
+#endif
 
 #------------------------------------------------------------
 # FindChessboardCorners
@@ -4714,6 +4855,8 @@ cvComputeCorrespondEpilines(points, which_image, fundamental_matrix, corresponde
 		const CvMat* fundamental_matrix
 		CvMat* correspondent_lines
 
+
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # ConvertPointsHomogeneous
 #------------------------------------------------------------
@@ -4723,6 +4866,9 @@ cvConvertPointsHomogeneous(src, dst)
 		const CvMat* src
 		CvMat* dst
 
+#endif
+
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # CvStereoBMState
 #------------------------------------------------------------
@@ -4758,17 +4904,14 @@ cvFindStereoCorrespondenceBM(img1r, img2r, disparity, state)
  		const CvArr* img2r
 		CvArr* disparity
 		CvStereoBMState* state 
-	CODE:
-#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
-		cvFindStereoCorrespondenceBM(img1r, img2r, disparity, state);
-#else
-		Perl_croak(aTHX_ "Can't call cvFindStereoCorrespondenceBM");
+
 #endif
 
 #------------------------------------------------------------
 # CvStereoGCState
 #------------------------------------------------------------
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # CreateStereoGCState
 #------------------------------------------------------------
@@ -4803,6 +4946,9 @@ cvFindStereoCorrespondenceGC(left, right, dispLeft, dispRight, state, useDispari
 		CvStereoGCState* state
 		int useDisparityGuess
 
+#endif
+
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # ReprojectImageTo3D
 #------------------------------------------------------------
@@ -4820,6 +4966,8 @@ cvReprojectImageTo3D(disparity, _3dImage, Q, handleMissingValues)
 		cvReprojectImageTo3D(disparity, _3dImage, Q);
 #else
 #error "?cvReprojectImageTo3D"
+#endif
+
 #endif
 
 # #####################################################################
@@ -5156,6 +5304,7 @@ cvConvertImage(src, dst, flags)
 #  Stereo Correspondence Functions
 # ===========================================================
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # FindStereoCorrespondence
 #------------------------------------------------------------
@@ -5173,12 +5322,14 @@ cvFindStereoCorrespondence( leftImage, rightImage, mode, depthImage, maxDisparit
         double  param4
 		double  param5
 
+#endif
 
 # #####################################################################
 #   Other
 #   - 
 # #####################################################################
 
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # cvbgfg_acmmm2003.cpp
 #------------------------------------------------------------
@@ -5190,10 +5341,19 @@ cvCreateFGDStatModel(first_frame, parameters)
 		CvFGDStatModelParams* parameters
 
 int
-cvUpdateBGStatModel(current_frame, bg_model)
+cvUpdateBGStatModel(current_frame, bg_model, learningRate)
 	INPUT:
 		IplImage *current_frame
 		CvBGStatModel*  bg_model
+		double learningRate
+	CODE:
+#if CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1
+		RETVAL = cvUpdateBGStatModel(current_frame, bg_model, learningRate);
+#else
+		RETVAL = cvUpdateBGStatModel(current_frame, bg_model);
+#endif
+	OUTPUT:
+		RETVAL
 
 void
 cvReleaseBGStatModel(bg_model)
@@ -5222,6 +5382,9 @@ cvBGforeground(bg_model)
 	OUTPUT:
 		RETVAL
 
+#endif
+
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
 #------------------------------------------------------------
 # cvbgfg_codebook.cpp
 #------------------------------------------------------------
@@ -5356,5 +5519,832 @@ cvGett(model)
 		CvBGCodeBookModel* model
 	CODE:
 		RETVAL = model->t;
+	OUTPUT:
+		RETVAL
+
+#endif
+
+
+# ===========================================================
+#  IplImage
+# ===========================================================
+int
+IplImage_depth(arr)
+	INPUT:
+		const CvArr* arr;
+	CODE:
+		IplImage* img = (IplImage*)arr;
+		RETVAL = img->depth;
+	OUTPUT:
+		RETVAL
+
+int
+IplImage_nChannels(arr)
+	INPUT:
+		const CvArr* arr;
+	CODE:
+		IplImage* img = (IplImage*)arr;
+		RETVAL = img->nChannels;
+	OUTPUT:
+		RETVAL
+
+int
+IplImage_get_origin(image)
+	INPUT:
+		IplImage* image
+	CODE:
+		RETVAL = image->origin;
+	OUTPUT:
+		RETVAL
+
+int
+IplImage_set_origin(image, origin)
+	INPUT:
+		IplImage* image
+		int origin
+	CODE:
+		RETVAL = image->origin;
+		image->origin = origin;
+	OUTPUT:
+		RETVAL
+
+SV *
+IplImage_get_imagedata(image)
+	INPUT:
+		IplImage* image
+	CODE:
+		SV *sv;
+		CvRect roi = cvGetImageROI((const IplImage *)image);
+		int h = roi.height ? roi.height : image->height;
+		int w = roi.width  ? roi.width  : image->width;
+		int d = image->depth & ~IPL_DEPTH_SIGN;
+		w *= image->nChannels * d/8;
+		if (w * h > 0) {
+			char s[w*h]; int j;
+			for (j = 0; j < h; j++) {
+				memcpy(s + w*j, cvPtr2D(image, j, 0, NULL), w);
+			}
+			sv = newSVpvn(s, w*h);
+		} else {
+			sv = newSVpvn("", 0);
+		}
+		RETVAL = sv;
+	OUTPUT:
+		RETVAL
+
+void
+IplImage_set_imagedata(image, data)
+	INPUT:
+		IplImage* image
+		SV *data
+	CODE:
+		int n = sv_len(data);
+		CvRect roi = cvGetImageROI((const IplImage *)image);
+		int h = roi.height ? roi.height : image->height;
+		int w = roi.width  ? roi.width  : image->width;
+		int d = image->depth & ~IPL_DEPTH_SIGN;
+		w *= image->nChannels * d/8;
+		if (w * h > 0) {
+			unsigned char *s = sv_pv(data); int j;
+			for (j = 0; j < h; j++) {
+				memcpy(cvPtr2D(image, j, 0, NULL), s + w*j, w);
+			}
+		}
+
+
+# ===========================================================
+#  CvKalman
+# ===========================================================
+
+CvMat*
+CvKalman_transition_matrix(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->transition_matrix;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvKalman_measurement_matrix(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->measurement_matrix;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvKalman_process_noise_cov(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->process_noise_cov;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvKalman_measurement_noise_cov(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->measurement_noise_cov;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvKalman_error_cov_pre(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->error_cov_pre;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvKalman_error_cov_post(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->error_cov_post;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+xv_state_pre(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->state_pre;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvKalman_state_post(kalman)
+	INPUT:
+		CvKalman* kalman
+	CODE:
+		RETVAL = kalman->state_post;
+	OUTPUT:
+		RETVAL
+
+
+# ===========================================================
+#  CvMat
+# ===========================================================
+int
+CvMat_refcount(mat)
+	INPUT:
+		const CvMat *mat
+	CODE:
+		RETVAL = -1;
+		if (CV_IS_MAT(mat)) {
+			if (mat->refcount) {
+				RETVAL = *(mat->refcount);
+			}
+		}
+	OUTPUT:
+		RETVAL
+
+
+int
+CV_IS_MAT(mat)
+	INPUT:
+		const CvArr* mat
+
+
+# ===========================================================
+#  CvSet
+# ===========================================================
+
+int
+CV_IS_SET(seq)
+	INPUT:
+		const CvSeq* seq
+
+int
+CV_IS_SET_ELEM(ptr)
+	INPUT:
+		const CvSetElem* ptr
+
+
+# ===========================================================
+#  CvSeq
+# ===========================================================
+int
+CvSeq_header_size(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+		if (CV_IS_SEQ(seq)) {
+			RETVAL = seq->header_size;
+		} else if (CV_IS_SET((CvSet*)seq)) {
+			RETVAL = ((CvSet*)seq)->header_size;
+		} else {
+			RETVAL = -1;
+		}
+	OUTPUT:
+		RETVAL
+
+int
+CvSeq_elem_size(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+		if (CV_IS_SEQ(seq)) {
+			RETVAL = seq->elem_size;
+		} else if (CV_IS_SET((CvSet*)seq)) {
+			RETVAL = ((CvSet*)seq)->elem_size;
+		} else {
+			RETVAL = -1;
+		}
+	OUTPUT:
+		RETVAL
+
+int
+CvSeq_total(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+		if (CV_IS_SEQ(seq)) {
+			RETVAL = seq->total;
+		} else if (CV_IS_SET((CvSet*)seq)) {
+			RETVAL = ((CvSet*)seq)->total;
+		} else {
+			RETVAL = -1;
+		}
+	OUTPUT:
+		RETVAL
+
+CvSeq*
+CvSeq_h_next(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+		RETVAL = seq->h_next;
+	OUTPUT:
+		RETVAL
+
+CvSeq*
+CvSeq_h_prev(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+		RETVAL = seq->h_prev;
+	OUTPUT:
+		RETVAL
+
+CvSeq*
+CvSeq_v_next(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+        RETVAL = seq->v_next;
+	OUTPUT:
+		RETVAL
+
+CvSeq*
+CvSeq_v_prev(seq)
+	INPUT:
+		CvSeq *seq
+	CODE:
+        RETVAL = seq->v_prev;
+	OUTPUT:
+		RETVAL
+
+
+int
+CV_SEQ_ELTYPE(seq)
+	INPUT:
+		const CvSeq* seq
+
+int
+CV_IS_SEQ(seq)
+	INPUT:
+		const CvSeq* seq
+
+
+# ===========================================================
+#  CvSeqReader
+# ===========================================================
+
+void*
+CvSeqReader_ptr(reader)
+	INPUT:
+		CvSeqReader* reader
+	CODE:
+		RETVAL = reader->ptr;
+	OUTPUT:
+		RETVAL
+
+SV *
+cvReadSeqElem(reader)
+	INPUT:
+		CvSeqReader* reader
+	CODE:
+		if (CV_IS_SEQ(reader->seq)) {
+			RETVAL = newSVpvn(reader->ptr, reader->seq->elem_size);
+			CV_NEXT_SEQ_ELEM(reader->seq->elem_size, *reader);
+		} else if (CV_IS_SET((CvSet*)reader->seq)) {
+			RETVAL = newSVpvn(reader->ptr, ((CvSet*)reader->seq)->elem_size);
+			CV_NEXT_SEQ_ELEM(((CvSet*)reader->seq)->elem_size, *reader);
+		} else {
+			RETVAL = newSVpvn("", 0);
+		}
+	OUTPUT:
+		RETVAL
+
+void
+cvNextSeqElem(reader)
+	INPUT:
+		CvSeqReader* reader
+	CODE:
+		if (CV_IS_SEQ(reader->seq)) {
+			CV_NEXT_SEQ_ELEM(reader->seq->elem_size, *reader);
+		} else if (CV_IS_SET((CvSet*)reader->seq)) {
+			CV_NEXT_SEQ_ELEM(((CvSet*)reader->seq)->elem_size, *reader);
+		}
+
+
+
+# ===========================================================
+#  CvSubdiv2D
+# ===========================================================
+CvSeq*
+CvSubdiv2D_edges(subdiv)
+	INPUT:
+		CvSubdiv2D* subdiv
+	CODE:
+		RETVAL = (CvSeq *)subdiv->edges;
+	OUTPUT:
+		RETVAL		
+
+
+# ===========================================================
+#  CvMoments
+# ===========================================================
+double
+CvMoments_m00(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m00;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m10(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m10;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m01(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m01;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m20(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m20;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m11(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m11;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m02(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m02;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m30(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m30;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m21(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m21;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m12(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m12;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_m03(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->m03;
+	OUTPUT:
+		RETVAL
+
+double
+CvMoments_inv_sqrt_m00(moments)
+	INPUT:
+		const CvMoments* moments
+	CODE:
+		RETVAL = moments->inv_sqrt_m00;
+	OUTPUT:
+		RETVAL
+
+
+# ===========================================================
+#  CvHuMoments
+# ===========================================================
+double
+CvHuMoments_hu1(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu1;
+	OUTPUT:
+		RETVAL
+
+double
+CvHuMoments_hu2(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu2;
+	OUTPUT:
+		RETVAL
+
+double
+CvHuMoments_hu3(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu3;
+	OUTPUT:
+		RETVAL
+
+double
+CvHuMoments_hu4(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu4;
+	OUTPUT:
+		RETVAL
+
+double
+CvHuMoments_hu5(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu5;
+	OUTPUT:
+		RETVAL
+
+double
+CvHuMoments_hu6(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu6;
+	OUTPUT:
+		RETVAL
+
+double
+CvHuMoments_hu7(hu_moments)
+	INPUT:
+		const CvHuMoments* hu_moments
+	CODE:
+		RETVAL = hu_moments->hu7;
+	OUTPUT:
+		RETVAL
+
+
+#if CV_MAJOR_VERSION == 2 || CV_MAJOR_VERSION == 1 && CV_MINOR_VERSION >= 1
+# ===========================================================
+#  CvStereoBMState
+# ===========================================================
+
+int
+CvStereoBMState_get_preFilterType(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->preFilterType;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_preFilterType(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->preFilterType;
+		state->preFilterType = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_preFilterSize(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->preFilterSize;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_preFilterSize(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->preFilterSize;
+		state->preFilterSize = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_preFilterCap(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->preFilterCap;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_preFilterCap(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->preFilterCap;
+		state->preFilterCap = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_SADWindowSize(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->SADWindowSize;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_SADWindowSize(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->SADWindowSize;
+		state->SADWindowSize = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_minDisparity(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->minDisparity;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_minDisparity(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->minDisparity;
+		state->minDisparity = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_numberOfDisparities(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->numberOfDisparities;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_numberOfDisparities(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->numberOfDisparities;
+		state->numberOfDisparities = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_textureThreshold(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->textureThreshold;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_textureThreshold(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->textureThreshold;
+		state->textureThreshold = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_uniquenessRatio(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->uniquenessRatio;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_uniquenessRatio(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->uniquenessRatio;
+		state->uniquenessRatio = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_speckleWindowSize(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->speckleWindowSize;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_speckleWindowSize(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->speckleWindowSize;
+		state->speckleWindowSize = value;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_get_speckleRange(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->speckleRange;
+	OUTPUT:
+		RETVAL
+
+int
+CvStereoBMState_set_speckleRange(state, value)
+	INPUT:
+		CvStereoBMState *state
+		int value
+	CODE:
+		RETVAL = state->speckleRange;
+		state->speckleRange = value;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvStereoBMState_get_preFilteredImg0(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->preFilteredImg0;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvStereoBMState_set_preFilteredImg0(state, value)
+	INPUT:
+		CvStereoBMState *state
+		CvMat *value
+	CODE:
+		RETVAL = state->preFilteredImg0;
+		state->preFilteredImg0 = value;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvStereoBMState_get_preFilteredImg1(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->preFilteredImg1;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvStereoBMState_set_preFilteredImg1(state, value)
+	INPUT:
+		CvStereoBMState *state
+		CvMat* value
+	CODE:
+		RETVAL = state->preFilteredImg1;
+		state->preFilteredImg1 = value;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvStereoBMState_get_slidingSumBuf(state)
+	INPUT:
+		CvStereoBMState *state
+	CODE:
+		RETVAL = state->slidingSumBuf;
+	OUTPUT:
+		RETVAL
+
+CvMat*
+CvStereoBMState_set_slidingSumBuf(state, value)
+	INPUT:
+		CvStereoBMState *state
+		CvMat* value
+	CODE:
+		RETVAL = state->slidingSumBuf;
+		state->slidingSumBuf = value;
+	OUTPUT:
+		RETVAL
+
+#endif
+
+# ===========================================================
+#  SizeOf_Cv*
+# ===========================================================
+
+int
+SizeOf_CvContour()
+	CODE:
+		RETVAL = sizeof(CvContour);
+	OUTPUT:
+		RETVAL
+
+int
+SizeOf_CvChain()
+	CODE:
+		RETVAL = sizeof(CvChain);
+	OUTPUT:
+		RETVAL
+
+int
+SizeOf_CvPoint()
+	CODE:
+		RETVAL = sizeof(CvPoint);
+	OUTPUT:
+		RETVAL
+
+int
+SizeOf_CvSeq()
+	CODE:
+		RETVAL = sizeof(CvSeq);
 	OUTPUT:
 		RETVAL

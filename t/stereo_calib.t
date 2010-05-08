@@ -131,7 +131,7 @@ sub StereoCalib {
 			last if ($result);
         }
         if ($displayCorners) {
-            print STDERR "$_\n";
+            #print STDERR "$_\n";
             my $cimg = Cv->CreateImage([ $w, $h ], 8, 3);
             $cimg = $img->CvtColor(CV_GRAY2RGB);
             Cv->DrawChessboardCorners(
@@ -148,7 +148,7 @@ sub StereoCalib {
 			$c &= 0x7f if ($c >= 0);
             exit -1 if ($c == 27 || $c == ord('q') || $c == ord('Q') );
         } else {
-            print STDERR '.';
+            #print STDERR '.';
 		}
 
 		$N = $n*($i - $lr)/2;
@@ -175,7 +175,7 @@ sub StereoCalib {
 		$i++;
     }
 	close $f;
-	print STDERR "\n";
+	#print STDERR "\n";
 
 	# HARVEST CHESSBOARD 3D OBJECT POINT LIST:
 	$nframes = @{$active[0]}; # Number of good chessboads found
@@ -200,7 +200,7 @@ sub StereoCalib {
 	}
 
 	# CALIBRATE THE STEREO CAMERAS
-    print STDERR "Running stereo calibration ...";
+    #print STDERR "Running stereo calibration ...";
     Cv->StereoCalibrate(
 		-object_points => $objectPoints,
 		-image_points1 => $imagePoints1,
@@ -217,7 +217,7 @@ sub StereoCalib {
 				   CV_CALIB_ZERO_TANGENT_DIST +
 				   CV_CALIB_SAME_FOCAL_LENGTH),
 		);
-    print STDERR " done\n";
+    #print STDERR " done\n";
 
 	# CALIBRATION QUALITY CHECK
 	# because the output fundamental matrix implicitly includes all
@@ -258,7 +258,7 @@ sub StereoCalib {
 			abs($p1->[1] * $l0->[1] + $p1->[0] * $l0->[0] + $l0->[2]);
         $avgErr += $err;
     }
-    printf STDERR "avg err = %g\n", $avgErr/($nframes*$n);
+    #printf STDERR "avg err = %g\n", $avgErr/($nframes*$n);
 
 	# COMPUTE AND DISPLAY RECTIFICATION
     if ($showUndistorted) {
@@ -297,7 +297,7 @@ sub StereoCalib {
 				abs($P2->GetReal2D([1, 3]) > $P2->GetReal2D([0, 3]));
 
 			# Precompute maps for cvRemap()
-            printf STDERR "Precompute maps for cvRemap\n";
+            #printf STDERR "Precompute maps for cvRemap\n";
             Cv->InitUndistortRectifyMap(
 				-camera_matrix => $M1,
 				-dist_coeffs => $D1,

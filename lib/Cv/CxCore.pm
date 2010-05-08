@@ -11,7 +11,6 @@
 # ######################################################################
 
 package Cv::CxCore;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -55,6 +54,12 @@ our @EXPORT = (	qw(
 		cvSlice
 		cvTermCriteria
 
+		CV_IS_MAT
+		CV_IS_SEQ
+		CV_IS_SET
+		CV_IS_SET_ELEM
+		CV_SEQ_ELTYPE
+
  	),
 	);
 
@@ -66,11 +71,6 @@ our %EXPORT_TAGS = (
  		fixargv
 		matrix
 
-		CV_IS_MAT
-		CV_IS_SEQ
-		CV_IS_SET
-		CV_IS_SET_ELEM
-		CV_SEQ_ELTYPE
 		CvHuMoments_hu1
 		CvHuMoments_hu2
 		CvHuMoments_hu3
@@ -132,6 +132,7 @@ our %EXPORT_TAGS = (
 		CvStereoBMState_set_speckleWindowSize
 		CvStereoBMState_set_textureThreshold
 		CvStereoBMState_set_uniquenessRatio
+		CvSubdiv2D_edges
 		IplImage_depth
 		IplImage_get_imagedata
 		IplImage_get_origin
@@ -237,6 +238,7 @@ our %EXPORT_TAGS = (
 		cvFindCornerSubPix
 		cvFindExtrinsicCameraParams2
 		cvFindFundamentalMat
+		cvFindHomography
 		cvFindStereoCorrespondence
 		cvFindStereoCorrespondenceBM
 		cvFitEllipse2
@@ -252,7 +254,6 @@ our %EXPORT_TAGS = (
 		cvGetCentralMoment
 		cvGetCol
 		cvGetCols
-		cvGetD
 		cvGetDiag
 		cvGetDims
 		cvGetElemType
@@ -307,10 +308,10 @@ our %EXPORT_TAGS = (
 		cvLoadCascade
 		cvLoadImage
 		cvLog
+		cvLogPolar
 		cvMahalanobis
 		cvMatchTemplate
 		cvMax
-		cvMaxRect
 		cvMaxS
 		cvMerge
 		cvMin
@@ -337,6 +338,9 @@ our %EXPORT_TAGS = (
 		cvPointPolygonTest
 		cvPolyLine
 		cvPow
+		cvPtr1D
+		cvPtr2D
+		cvPtr3D
 		cvPutText
 		cvPyrDown
 		cvPyrSegmentation
@@ -394,10 +398,12 @@ our %EXPORT_TAGS = (
 		cvSeqSlice
 		cvSet
 		cvSet1D
+		cvSet1Dx
 		cvSet2D
+		cvSet2Dx
 		cvSet3D
+		cvSet3Dx
 		cvSetCaptureProperty
-		cvSetD
 		cvSetIdentity
 		cvSetImageCOI
 		cvSetImageData
@@ -457,7 +463,7 @@ our @EXPORT_OK = (
 	@{ $EXPORT_TAGS{'all'} },
 	);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 require XSLoader;
 XSLoader::load('Cv', $VERSION);
@@ -1374,7 +1380,6 @@ sub cvScalar {
 	} elsif (ref $_[0] eq 'HASH') {
 		&cvScalar(&fixargv(%{$_[0]}));
 	} else {
-		my @arg = @_;
 		if (@_ == 1) {
 			if (my $rgb = $RgbTxt->{lc $_[0]}) {
 				my ($r, $g, $b) = @$rgb;
@@ -1385,7 +1390,7 @@ sub cvScalar {
 						 -val1 => undef,
 						 -val2 => undef,
 						 -val3 => undef,
-					   ], @arg);
+					   ], @_);
 		$av{-val0} ||= $av{-b} || $av{-x} unless defined $av{-val0};
 		$av{-val1} ||= $av{-g} || $av{-y} unless defined $av{-val1};
 		$av{-val2} ||= $av{-r} || $av{-z} unless defined $av{-val2};
@@ -1412,7 +1417,6 @@ sub cvRealScalar {
 }
 
 sub cvIndex {
-	my $idx;
 	if (ref $_[0] eq 'ARRAY') {
 		wantarray? @{$_[0]} : $_[0];
 	} elsif (ref $_[0] eq 'HASH') {

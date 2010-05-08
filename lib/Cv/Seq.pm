@@ -1,7 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 package Cv::Seq;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -17,10 +16,11 @@ BEGIN {
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 use Cv::Mat;
+use Cv::Seq::Reader;
 
 our @ISA = qw(Cv::Mat);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -484,7 +484,6 @@ usage:	Cv::Seq->CvtSeqToArray(
 # ------------------------------------------------------------
 sub StartReadSeq {
 	my $self = shift;
-	use Cv::Seq::Reader;
 	Cv::Seq::Reader->new(-seq => $self, @_);
 }
 

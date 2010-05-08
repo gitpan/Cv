@@ -437,7 +437,6 @@ CV_SUBMINOR_VERSION, CV_VERSION,
 =cut
 
 package Cv;
-use lib qw(blib/lib blib/arch);
 
 use 5.008008;
 use strict;
@@ -474,7 +473,7 @@ our @EXPORT_OK = (
 	@{ $EXPORT_TAGS{'all'} },
 	);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -581,7 +580,7 @@ sub CreateFileCapture {
 }
 
 sub CreateCameraCapture {
-    my $class = shift;
+    my $self = shift;
 	use Cv::Capture;
 	Cv::Capture->CreateCameraCapture(@_);
 }
@@ -590,7 +589,7 @@ sub CreateCameraCapture {
 #  cvCreateBGCodeBookModel - 
 # ------------------------------------------------------------
 sub CreateBGCodeBookModel {
-    my $class = shift;
+    my $self = shift;
 	use Cv::BGCodebook;
 	Cv::BGCodebook->new(@_);
 }
@@ -613,14 +612,26 @@ sub SegmentMotion {
 	Cv::MotionHistory->SegmentMotion(@_);
 }
 
-
 # ------------------------------------------------------------
-#  CvStereoBMState - 
+#  CreateSubdivDelaunay2D - Creates empty Delaunay triangulation
+# ------------------------------------------------------------
+sub CreateSubdivDelaunay2D {
+	my $self = shift;
+	use Cv::Subdiv2D;
+	Cv::Subdiv2D->CreateDelaunay(@_);
+}
+
+
+sub Subdiv2DEdge {
+	my $self = shift;
+	use Cv::Subdiv2D::Edge;
+	Cv::Subdiv2D::Edge->new(@_);
+}
+
 
 # ------------------------------------------------------------
 #  CreateStereoBMState - Creates block matching stereo correspondence
 #          structure
-#  (Cv::StereoBMState)
 # ------------------------------------------------------------
 sub CreateStereoBMState {
 	my $self = shift;

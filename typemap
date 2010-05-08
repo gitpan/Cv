@@ -56,7 +56,7 @@ CvSetElem*		T_PTR
 const CvSetElem*	T_PTR
 CvConnectedComp*	T_PTRREF
 CvSubdiv2D*		T_PTRREF
-CvSubdiv2DEdge	T_IV
+CvSubdiv2DEdge	T_PTRREF
 CvNextEdgeType	T_IV
 
 CvHistogram*		T_PTRREF

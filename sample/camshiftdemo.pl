@@ -36,10 +36,10 @@ my $win = Cv->NamedWindow("CamShiftDemo")
 my $histimg = Cv->CreateImage([320, 200], 8, 3)->Zero;
 my $hdims = 16;
 my $hranges_arr = [0, 180];
-my $hist = Cv::Histogram->new(-sizes => [$hdims],
-							  -ranges => [$hranges_arr],
-							  -type => CV_HIST_ARRAY,
-							  );
+my $hist = Cv->CreateHist(-sizes => [$hdims],
+						  -ranges => [$hranges_arr],
+						  -type => CV_HIST_ARRAY,
+						  );
 
 my %selection;
 my %origin;

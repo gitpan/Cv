@@ -1193,7 +1193,6 @@ sub cvscalar_is {
 	like($@, qr/usage:/, "GetSubRect(usage)");
 }
 
-
 # ------------------------------------------------------------ 
 #  GetElemType - Returns type of array elements
 # ------------------------------------------------------------
@@ -1229,7 +1228,6 @@ sub cvscalar_is {
 	is($image->GetDimSize(1),  $col,  "GetDimSize(col)");
 }
 
-
 # ------------------------------------------------------------
 # Sobel - Calculates first, second, third or mixed image derivatives
 # using extended Sobel operator
@@ -1237,8 +1235,7 @@ sub cvscalar_is {
 {
 	my $img = Cv->LoadImage($lena, CV_LOAD_IMAGE_GRAYSCALE);
 	my @size = $img->GetSize;
-	my $sobel = $img->new(-depth => IPL_DEPTH_8U, -channels => 1);
-	$img->Sobel->ConvertScaleAbs(-dst => $sobel);
+	my $sobel = $img->Sobel->ConvertScaleAbs;
 	#$sobel->ShowImage->WaitKey;
 	eval { Cv->Sobel };
 	ok($@, "Sobel(usage)");
@@ -1250,8 +1247,7 @@ sub cvscalar_is {
 {
 	my $img = Cv->LoadImage($lena, CV_LOAD_IMAGE_COLOR);
 	my @size = $img->GetSize;
-	my $laplace = $img->new(-depth => IPL_DEPTH_8U, -channels => 3);
-	$img->Laplace->ConvertScaleAbs(-dst => $laplace);
+	my $laplace = $img->Laplace->ConvertScaleAbs;
 	#$laplace->ShowImage->WaitKey;
 	eval { Cv->Laplace };
 	ok($@, "Laplace(usage)");
@@ -1345,7 +1341,6 @@ sub cvscalar_is {
 	#$bin->ShowImage("AdaptiveThreshold")->WaitKey(1000);
 }
 
-
 # ======================================================================
 #  1.3. Morphological Operations
 #  - Erode - Erodes image by using arbitrary structuring element
@@ -1390,7 +1385,62 @@ sub cvscalar_is {
 	my $image = Cv->LoadImage($lena, CV_LOAD_IMAGE_GRAYSCALE);
 	my $equalize = $image->EqualizeHist;
 	is(blessed $equalize, "Cv::Image", "EqualizeHist");
-
 	eval { $image->EqualizeHist(-src => undef) };
 	like($@, qr/usage:/, "EqualizeHist(usage)");
+}
+
+
+# ------------------------------------------------------------
+#  MinMaxLoc - Finds global minimum and maximum in array or subarray
+# ------------------------------------------------------------
+{
+	my $image = Cv->new([ 320, 240 ], 8, 1);
+	$image->Set([ 100 ]);
+	$image->Set1D([ 10, 20 ], [ 0 ]);
+	$image->Set1D([ 100, 200 ], [ 255 ]);
+
+
+	my $mm = $image->MinMaxLoc;
+
+	ok($mm->{min}{val} == 0, "{min}{val}");
+	ok($mm->{min}{loc}{x} == 20, "{min}{loc}{x}");
+	ok($mm->{min}{loc}{y} == 10, "{min}{loc}{y}");
+
+	ok($mm->{max}{val} == 255, "{max}{val}");
+	ok($mm->{max}{loc}{x} == 200, "{max}{loc}{x}");
+	ok($mm->{max}{loc}{y} == 100, "{max}{loc}{y}");
+
+	my $min_val;
+	my $max_val;
+
+	my @min_loc;
+	my @max_loc;
+
+	$image->MinMaxLoc(-min_val => \$min_val, -max_val => \$max_val,
+					  -min_loc => \@min_loc, -max_loc => \@max_loc,
+					  );
+
+	ok($min_val == 0, "min_val");
+	ok($min_loc[0] == 20, "min_loc[0]");
+	ok($min_loc[1] == 10, "min_loc[1]");
+
+	ok($max_val == 255, "max_val");
+	ok($max_loc[0] == 200, "max_loc[0]");
+	ok($max_loc[1] == 100, "max_loc[1]");
+
+	my %min_loc;
+	my %max_loc;
+
+	$image->MinMaxLoc(-min_val => \$min_val, -max_val => \$max_val,
+					  -min_loc => \%min_loc, -max_loc => \%max_loc,
+					  );
+
+	ok($min_val == 0, "min_val");
+	ok($min_loc{x} == 20, "min_loc{x}");
+	ok($min_loc{y} == 10, "min_loc{y}");
+	
+	ok($max_val == 255, "max_val");
+	ok($max_loc{x} == 200, "max_loc{x}");
+	ok($max_loc{y} == 100, "max_loc{y}");
+
 }

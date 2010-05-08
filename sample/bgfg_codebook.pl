@@ -4,7 +4,6 @@
 use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
-#use Cv::BGCodebook;
 use Getopt::Std;
 use Data::Dumper;
 
@@ -55,7 +54,9 @@ my $capture = undef;
 my $nframes = 0;
 my $nframesToLearnBG = 300;
 
-my $model = Cv::BGCodebook->new;
+
+#my $model = Cv::BGCodebook->new;
+my $model = Cv->CreateBGCodeBookModel;
 
 # Set color thresholds to default values
 $model->modMin(3, 3, 3);
@@ -121,7 +122,8 @@ while (1) {
 
 			# This part just to visualize bounding boxes and centers if desired
 			$ImaskCodeBook->Copy(-dst => $ImaskCodeBookCC);	
-			Cv::BGCodebook->SegmentFGMask(-fgmask => $ImaskCodeBookCC);
+			#Cv::BGCodebook->SegmentFGMask(-fgmask => $ImaskCodeBookCC);
+			$model->SegmentFGMask(-fgmask => $ImaskCodeBookCC);
 		}
 
 		# Display

@@ -1,4 +1,24 @@
 Revision history for Cv.pm
 
-Rlease 0.02 - 31th March 2010
- - Initial release
+0.03 - 2010-05-08
+
+     * tested OpenCV 1.0.0 and 2.1.0 
+     * added README.cygwin+opencv2xx
+     * added some sample scripts
+       - delaunay.pl
+       - ffilldemo.pl
+       - polar_transforms.pl
+     * added 
+       - lib/Cv/Arr/C1.pm
+       - lib/Cv/Arr/C2.pm
+       - lib/Cv/Arr/C3.pm
+       - lib/Cv/Arr/C4.pm
+       - lib/Cv/Arr/Cx.pm
+       - lib/Cv/Subdiv2D
+       - lib/Cv/Subdiv2D.pm
+       - lib/Cv/Subdiv2D/Edge.pm
+       - lib/Cv/TieArr.pm
+ 
+0.02 - 2010-03-31
+
+     * Initial release

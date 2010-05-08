@@ -22,10 +22,13 @@ my $hist = Cv->CreateHist(
 	-ranges => [$ranges],
 	-type => CV_HIST_ARRAY,
 	);
-my $lut = Cv->CreateMat(
-	-rows => 1,
-	-cols => 256,
-	-type => CV_8UC1
+
+use Cv::TieArr;
+tie my @lut, 'Cv::TieArr',
+	my $lut = Cv->CreateMat(
+		-rows => 1,
+		-cols => 256,
+		-type => CV_8UC1
 	);
 
 my $brightness = 100;
@@ -57,29 +60,21 @@ sub update_brightcont {
 		my $delta = 127 * $contrast / 100;
 		my $a = 255 / (255 - $delta*2);
 		my $b = $a * ($brightness - $delta);
-		for (0..255) {
-			my $v = Cv->Round($a*$_ + $b);
-			$v = max(0, $v);
-			$v = min(255, $v);
-			$lut->SetD([$_], [$v]);
-		}
+		$lut[$_] = [ min(max(0, Cv->Round($a * $_ + $b)), 255) ]
+			for (0 .. $#lut);
 	} else {
 		my $delta = -128 * $contrast / 100;
 		my $a = (256 - $delta*2) / 255.;
 		my $b = $a * $brightness + $delta;
-		for (0..255) {
-			my $v = Cv->Round($a*$_ + $b);
-			$v = max(0, $v);
-			$v = min(255, $v);
-			$lut->SetD([$_], [$v]);
-		}
+		$lut[$_] = [ min(max(0, Cv->Round($a * $_ + $b)), 255) ]
+			for (0 .. $#lut);
 	}
 	$dst_image = $src_image->LUT(-lut => $lut);
 	
 	$hist->CalcHist(-images => [$dst_image]);
 	my $mm = $hist->GetMinMaxHistValue;
 	if ($mm->{max}{val}) {
-		$hist->ScaleHist(-scale => $hist_image->height/$mm->{max}{val});
+		$hist = $hist->ScaleHist(-scale => $hist_image->height/$mm->{max}{val});
 	}
 	# cvNormalizeHist( hist, 1000 );
 	

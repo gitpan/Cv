@@ -1,10 +1,11 @@
-#!/usr/bin/perl
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-use strict;
-use lib qw(blib/lib blib/arch);
-use lib qw(../blib/lib ../blib/arch);
-use Cv;
+use Test::More qw(no_plan);
+#use Test::More tests => 2;
+use Test::Output;
+BEGIN {
+	use_ok('Cv');
+}
 use File::Basename;
 use List::Util qw(min);
 
@@ -14,6 +15,7 @@ use List::Util qw(min);
 # "$HOUGH_STANDARD = 0" and back.
 
 my $HOUGH_STANDARD = 0;
+$HOUGH_STANDARD = 1 if $0 =~ /standard/i;
 
 my $filename = @ARGV > 0? shift : dirname($0).'/'."pic1.png";
 my $src = Cv->LoadImage(-filename => $filename, -flags => 0)
@@ -21,7 +23,7 @@ my $src = Cv->LoadImage(-filename => $filename, -flags => 0)
 
 my $dst = $src->new(-depth => 8, -channels => 1);
 my $color_dst = $src->new(-depth => 8, -channels => 3);
-my $storage = Cv->CreateMemStorage;
+my $storage = Cv::MemStorage->new;
 
 $src->Canny(
 	-threshold1 => 50, -threshold2 => 200,
@@ -80,4 +82,5 @@ Cv->NamedWindow(-name => "Source", -flags => 1)
 	->ShowImage(-image => $src);
 Cv->NamedWindow(-name => "Hough", -flags => 1)
 	->ShowImage(-image => $color_dst);
-Cv->WaitKey;
+Cv->WaitKey(1000);
+ok(1);

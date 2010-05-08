@@ -1,17 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-# ######################################################################
-#
-#     @    @  @@@   @@@@@  @    @   @@@@@  @    @  @@@
-#     @    @   @   @       @    @  @       @    @   @
-#     @@@@@@   @   @   @@  @@@@@@  @   @@  @    @   @
-#     @    @   @   @    @  @    @  @    @  @    @   @
-#     @    @  @@@   @@@@@  @    @   @@@@@   @@@@   @@@
-#
-# ######################################################################
-
 package Cv::Window;
-use lib qw(blib/lib blib/arch);
 
 use 5.008000;
 use strict;
@@ -27,7 +16,7 @@ BEGIN {
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 
@@ -362,10 +351,14 @@ usage:	Cv::Window->GetTrackbarPos(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
-	cvGetTrackbarPos(
-		$av{-trackbar_name},
-		$av{-window_name},
-		);
+	if ($WINDOWS{$av{-window_name}}{trackbar}{$av{-trackbar_name}}) {
+		cvGetTrackbarPos(
+			$av{-trackbar_name},
+			$av{-window_name},
+			);
+	} else {
+		-1;
+	}
 }
 
 # ------------------------------------------------------------
@@ -392,11 +385,16 @@ usage:	Cv::Window->SetTrackbarPos(
 			);
 		croak $usage, " = ", &Dumper(\%av);
 	}
-	cvSetTrackbarPos(
-		$av{-trackbar_name},
-		$av{-window_name},
-		$av{-pos},
-		);
+	if ($WINDOWS{$av{-window_name}}{trackbar}{$av{-trackbar_name}}) {
+		cvSetTrackbarPos(
+			$av{-trackbar_name},
+			$av{-window_name},
+			$av{-pos},
+			);
+		0;
+	} else {
+		-1;
+	}
 }
 
 # ------------------------------------------------------------

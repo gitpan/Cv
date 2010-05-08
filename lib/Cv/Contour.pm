@@ -1,4 +1,5 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
+
 package Cv::Contour;
 
 use 5.008000;
@@ -18,7 +19,7 @@ use Cv::Seq::Point;
 
 our @ISA = qw(Cv::Seq::Point);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # ------------------------------------------------------------
 #  ApproxChains - Approximates Freeman chain(s) with polygonal curve

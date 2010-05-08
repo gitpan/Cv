@@ -1,4 +1,5 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
+
 package Cv::BGCodebook;
 
 use 5.008000;
@@ -11,7 +12,7 @@ use Data::Dumper;
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # Preloaded methods go here.
 

@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-use strict;
 use lib qw(blib/lib blib/arch);
+use strict;
 use Cv qw(:all);
 use File::Basename;
-use Data::Dumper;
 use Time::HiRes qw(gettimeofday);
+use Data::Dumper;
 
 my $filename = @ARGV > 0 ? shift : dirname($0).'/'."stuff.jpg";
 my $gray = Cv->LoadImage($filename, CV_LOAD_IMAGE_GRAYSCALE)
@@ -24,8 +24,8 @@ print "Hot keys: \n",
 	"\tSPACE - loop through all the modes\n";
 
 my $dist = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32F, 1 );
-my $dist8u1 = $gray->CloneImage;
-my $dist8u2 = $gray->CloneImage;
+my $dist8u1 = $gray->new;
+my $dist8u2 = $gray->new;
 my $dist8u = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_8U, 3 );
 my $dist32s = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32S, 1 );
 my $labels = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32S, 1 );
@@ -47,10 +47,10 @@ for (;;) {
 	&on_trackbar(100);
 	
 	my $c = Cv->WaitKey;
-	my $key = chr($c);
+	$c &= 0x7f if ($c > 0);
+	last if ($c == 27);
 
-	last if ($c > 0 && ($c & 0x7f) == 27);
-	
+	my $key = chr($c);
 	if( $key eq 'c' || $key eq 'C' ) {
 		$dist_type = CV_DIST_C;
 	} elsif ( $key eq '1' ) {
@@ -88,38 +88,23 @@ exit;
 
 # threshold trackbar callback
 sub on_trackbar {
-    my @colors = ( [   0,   0,   0 ],
-				   [ 255,   0,   0 ],
-				   [ 255, 128,   0 ],
-				   [ 255, 255,   0 ],
-				   [   0, 255,   0 ],
-				   [   0, 128, 255 ],
-				   [   0, 255, 255 ],
-				   [   0,   0, 255 ],
-				   [ 255,   0, 255 ],
-		);
-
     my $msize = $mask_size;
     my $_dist_type = $build_voronoi ? CV_DIST_L2 : $dist_type;
     my $edge = $gray->Threshold(-threshold => $edge_thresh,
 								-max_value => $edge_thresh,
 								-threshold_type => CV_THRESH_BINARY);
-
-    $msize = CV_DIST_MASK_5 if ( $build_voronoi );
-
-    if ( $_dist_type == CV_DIST_L1 ) {
-		$edge->DistTransform(-dst => $edge,
+    $msize = CV_DIST_MASK_5 if ($build_voronoi);
+    if ($_dist_type == CV_DIST_L1) {
+		$edge->DistTransform(-dst => $dist,
 							 -distance_type => $_dist_type,
 							 -mask_size => $msize);
-        $edge->Convert(-dst => $dist);
     } else {
 		$edge->DistTransform(-dst => $dist,
 							 -distance_type => $_dist_type,
 							 -mask_size => $msize,
-							 -mask => \0,
 							 -labels => $build_voronoi ? $labels : \0);
 	}
-    unless ( $build_voronoi ) {
+    unless ($build_voronoi) {
         # begin "painting" the distance transform result
         $dist->ConvertScale(-scale =>  5000, -shift => 0)->Pow(0.5)
 			->ConvertScale(-scale => 1.0, -shift => 0.5, -dst => $dist32s);
@@ -134,50 +119,79 @@ sub on_trackbar {
         $dist8u->Merge(-src0 => $dist8u1, -src1 => $dist8u2, -src2 => $dist8u2);
         # end "painting" the distance transform result
     } else {
+		my $use_inline_c = 0;
+		my $show_etime = 0;
 		my $t0 = gettimeofday;
-
-		if (0) {
-			# 94.9520649909973
+		if ($use_inline_c) {
+			# 0.03s
+			&dovoronoi($labels, $dist, $dist8u);
+		} else {
+			# 18s
+			my @colors = ( [   0,   0,   0 ],
+						   [ 255,   0,   0 ],
+						   [ 255, 128,   0 ],
+						   [ 255, 255,   0 ],
+						   [   0, 255,   0 ],
+						   [   0, 128, 255 ],
+						   [   0, 255, 255 ],
+						   [   0,   0, 255 ],
+						   [ 255,   0, 255 ],
+				);
 			foreach my $y (0 .. $labels->height - 1) {
+				my @ll = $labels->PtrD([$y, 0]);
+				my @dd = $dist->PtrD([$y, 0]);
 				foreach my $x (0 .. $labels->width - 1) {
-					my $pos = [ $y, $x ];	# pos has row & column
-					my $ll = $labels->GetD($pos)->[0];
-					my $dd = $dist->GetD($pos)->[0];
-					my $idx = $ll == 0 || $dd == 0 ? 0 : ($ll - 1) % 8 + 1;
-					$dist8u->SetD($pos, $colors[$idx]);
-				}
-			}
-		}
-
-		if (0) {
-			# 2.37699007987976
-			foreach my $y (0 .. $labels->height - 1) {
-				foreach my $x (0 .. $labels->width - 1) {
-					my $ll = unpack("d*", cvGet2D($labels, $y, $x));
-					my $dd = unpack("d*", cvGet2D($dist, $y, $x));
-					my $idx = $ll == 0 || $dd == 0 ? 0 : ($ll - 1) % 8 + 1;
+					my $idx = $ll[$x] == 0 || $dd[$x] == 0 ?
+						0 : ($ll[$x] - 1) % 8 + 1;
+					#$dist8u->SetD(-idx => [$y, $x], -value => $colors[$idx]);
 					cvSet2D($dist8u, $y, $x, pack("d4", @{$colors[$idx]}));
 				}
 			}
+			my $font = Cv->InitFont(CV_FONT_HERSHEY_PLAIN);
+			$font->PutText(
+				-img => $dist8u, -org => [ 20, 20 ], -overstrike => 1,
+				-text => "Try '\$use_inline_c = 1' if you feel slow.");
 		}
-
-		if (1) {
-			# 1.38915991783142
-			my @ll = unpack("L*", $labels->GetImageData);
-			my @dd = unpack("L*", $dist->GetImageData);
-			my $image = '';
-			for my $i (0 .. $#ll) {
-				my $idx = $ll[$i] == 0 || $dd[$i] == 0 ?
-					0 : ($ll[$i] - 1) % 8 + 1;
-				$image .= pack("C3", @{$colors[$idx]});
-			}
-			$dist8u->SetImageData($image);
-		}
-
 		my $t1 = gettimeofday;
-		print $t1 - $t0, "\n";
-
+		print $t1 - $t0, "\n" if ($show_etime);
     }
-    
     $win->ShowImage($dist8u);
 }
+
+
+use Inline C => Config => CCFLAGS => '-I/usr/local/include';
+use Inline C => Config => TYPEMAPS => "$ENV{HOME}/Cv/typemap";
+use Inline C => <<'----';
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
+void dovoronoi(IplImage *labels, IplImage *dist, IplImage *dist8u)
+{
+    static const uchar colors[][3] = {
+        {   0,   0,   0 },
+        { 255,   0,   0 },
+        { 255, 128,   0 },
+        { 255, 255,   0 },
+        {   0, 255,   0 },
+        {   0, 128, 255 },
+        {   0, 255, 255 },
+        {   0,   0, 255 },
+        { 255,   0, 255 }
+    };
+	int i, j;
+	for (i = 0; i < labels->height; i++) {
+		int* ll = (int*)(labels->imageData + i*labels->widthStep);
+		float* dd = (float*)(dist->imageData + i*dist->widthStep);
+		uchar* d = (uchar*)(dist8u->imageData + i*dist8u->widthStep);
+		for (j = 0; j < labels->width; j++) {
+			int idx = ll[j] == 0 || dd[j] == 0 ? 0 : (ll[j] - 1)%8 + 1;
+			int b = cvRound(colors[idx][0]);
+			int g = cvRound(colors[idx][1]);
+			int r = cvRound(colors[idx][2]);
+			d[j*3 + 0] = (uchar)b;
+			d[j*3 + 1] = (uchar)g;
+			d[j*3 + 2] = (uchar)r;
+		}
+	}
+}
+----
