@@ -19,7 +19,7 @@ use Cv::Arr::C4;
 
 our @ISA = qw(Tie::Array Cv::Arr);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub _arr_type {
 	my $et = cvGetElemType($_[0]);

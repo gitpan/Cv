@@ -9,6 +9,7 @@ extern "C" {
 }
 #endif
 
+#define NEED_sv_2pv_nolen
 #include "ppport.h"
 
 #include <opencv/cv.h>
@@ -22,9 +23,9 @@ extern "C" {
 #define max(a, b) ((a)>(b)?(a):(b))
 #endif
 
-//------------------------------------------------------------
+/*------------------------------------------------------------
 //  CvMouseCallback
-//------------------------------------------------------------
+//----------------------------------------------------------*/
 
 static SV* perl_cb_mouse = (SV*)0;
 
@@ -40,7 +41,7 @@ static void cb_mouse(int event, int x, int y, int flags, void* param) {
 		XPUSHs(sv_2mortal(newSViv(flags)));
 		XPUSHs(sv_2mortal(newSViv((int)param)));
 		PUTBACK;
-		call_sv(perl_cb_mouse, G_EVAL|G_VOID);
+		call_sv(perl_cb_mouse, G_EVAL|G_DISCARD);
 		FREETMPS;
 		LEAVE;
 	}
@@ -59,9 +60,9 @@ CvMouseCallback make_perl_cb_CvMouseCallback(SV *callback)
 }
 
 
-//------------------------------------------------------------
+/*------------------------------------------------------------
 //  CvTrackbarCallback
-//------------------------------------------------------------
+//----------------------------------------------------------*/
 
 typedef struct elem {
     struct elem *next;
@@ -127,7 +128,7 @@ static void cb_trackbar(int pos)
 				PUSHMARK(SP);
 				XPUSHs(sv_2mortal(newSViv(p->pos)));
 				PUTBACK;
-				call_sv(p->callback, G_EVAL|G_VOID);
+				call_sv(p->callback, G_EVAL|G_DISCARD);
 				FREETMPS;
 				LEAVE;
 			}
@@ -136,9 +137,9 @@ static void cb_trackbar(int pos)
 }
 
 
-//------------------------------------------------------------
+/*------------------------------------------------------------
 //  CvPoint
-//------------------------------------------------------------
+//----------------------------------------------------------*/
 static int xspoint(SV *svp, CvPoint *p)
 {
     if (SvROK(svp)) {
@@ -168,9 +169,9 @@ static HV *plpoint(CvPoint point)
 	return hv;
 }
 
-//-----------------------------------------------------------
+/*-----------------------------------------------------------
 // CvPoint2D32f
-//-----------------------------------------------------------
+//---------------------------------------------------------*/
 static int xspoint2d32f(SV *svp, CvPoint2D32f *p)
 {
     if (SvROK(svp)) {
@@ -245,7 +246,7 @@ CV_SUBMINOR_VERSION()
 
 # ######################################################################
 #   CXCORE
-#   - http://opencv.jp/opencv-1.1.0_org/docs/ref/opencvref_cxcore.htm
+#   - "http://opencv.jp/opencv-1.1.0_org/docs/ref/opencvref_cxcore.htm"
 # ######################################################################
 
 #============================================================
@@ -589,7 +590,7 @@ cvGetDims(arr)
 		for (i = 0; i < dims; i++) {
 			av_push(results, newSVnv(size[i]));
 		}
-		RETVAL = newRV((SV *)results);
+		RETVAL = newRV_inc((SV *)results);
 	OUTPUT:
 		RETVAL
 
@@ -751,7 +752,7 @@ cvSet1Dx(arr, idx0, value)
 		SV* value
 	CODE:
 		char *d = cvPtr1D(arr, idx0, NULL);
-		memcpy(d, sv_pv(value), sv_len(value));
+		memcpy(d, SvPV_nolen(value), sv_len(value));
 
 void
 cvSet2Dx(arr, idx0, idx1, value)
@@ -762,7 +763,7 @@ cvSet2Dx(arr, idx0, idx1, value)
 		SV* value
 	CODE:
 		char *d = cvPtr2D(arr, idx0, idx1, NULL);
-		memcpy(d, sv_pv(value), sv_len(value));
+		memcpy(d, SvPV_nolen(value), sv_len(value));
 
 void
 cvSet3Dx(arr, idx0, idx1, idx2, value)
@@ -774,7 +775,7 @@ cvSet3Dx(arr, idx0, idx1, idx2, value)
 		SV* value
 	CODE:
 		char *d = cvPtr3D(arr, idx0, idx1, idx2, NULL);
-		memcpy(d, sv_pv(value), sv_len(value));
+		memcpy(d, SvPV_nolen(value), sv_len(value));
 
 #------------------------------------------------------------
 # SetReal*D
@@ -1243,7 +1244,7 @@ cvSum(arr)
 		for (i = 0; i < cn; i++) {
 			av_push(results, newSVnv(scalar.val[i]));
 		}
-		RETVAL = newRV((SV *)results);
+		RETVAL = newRV_inc((SV *)results);
 
 #------------------------------------------------------------
 # Avg
@@ -1262,7 +1263,7 @@ cvAvg(arr, mask)
 		for (i = 0; i < cn; i++) {
 			av_push(results, newSVnv(scalar.val[i]));
 		}
-		RETVAL = newRV((SV *)results);
+		RETVAL = newRV_inc((SV *)results);
 
 #------------------------------------------------------------
 # AvgSdv
@@ -1283,9 +1284,9 @@ cvAvgSdv(arr, mask)
 			HV *rh = (HV *)sv_2mortal((SV *)newHV());
 			hv_store(rh, "avg", 3, newSVnv(avg.val[i]), 0);
 			hv_store(rh, "sdv", 3, newSVnv(sdv.val[i]), 0);
-			av_push(av, newRV((SV *)rh));
+			av_push(av, newRV_inc((SV *)rh));
 		}
-		RETVAL = newRV((SV *)av);
+		RETVAL = newRV_inc((SV *)av);
 
 #------------------------------------------------------------
 # MinMaxLoc
@@ -1435,7 +1436,7 @@ cvTrace(mat)
 		for (i = 0; i < cn; i++) {
 			av_push(results, newSVnv(scalar.val[i]));
 		}
-		RETVAL = newRV((SV *)results);
+		RETVAL = newRV_inc((SV *)results);
 
 #------------------------------------------------------------
 # Transpose
@@ -1639,7 +1640,7 @@ cvRNG(seed)
 	INPUT:
 		CvRNG seed
 	CODE:
-		RETVAL = (CvRNG*)malloc(sizeof(CvRNG));
+		Newx(RETVAL, 1, CvRNG);
 		*RETVAL = cvRNG(seed);
 	OUTPUT:
 		RETVAL
@@ -1649,7 +1650,7 @@ cvReleaseRNG(rng)
 	INPUT:
 		CvRNG* rng
 	CODE:
-		if (rng) free(rng);
+		if (rng) safefree(rng);
 		rng = 0;
 
 #------------------------------------------------------------
@@ -1968,10 +1969,10 @@ cvCvtSeqToArray(seq, element, slice)
 				HV *hv_point = (HV *)sv_2mortal((SV *)newHV());
 				hv_store(hv_point, "x", 1, newSVnv(pt[i].x), 0);
 				hv_store(hv_point, "y", 1, newSVnv(pt[i].y), 0);
-				av_push(av_element, newRV((SV *)hv_point));
+				av_push(av_element, newRV_inc((SV *)hv_point));
 			}
 		}
-		RETVAL = newRV((SV *)av_element);
+		RETVAL = newRV_inc((SV *)av_element);
 	OUTPUT:
 		RETVAL
 
@@ -2042,7 +2043,7 @@ cvStartReadSeq(seq, reverse)
 		const CvSeq* seq
 		int reverse
 	CODE:
-		CvSeqReader* reader = (CvSeqReader*)malloc(sizeof(CvSeqReader));
+		CvSeqReader* reader; Newx(reader, 1, CvSeqReader);
 		if (reader) cvStartReadSeq(seq, reader, reverse);
 		RETVAL = reader;
 	OUTPUT:
@@ -2053,7 +2054,7 @@ cvReleaseReader(reader)
 	INPUT:
 		CvSeqReader* reader
 	CODE:
-		free(reader);
+		safefree(reader);
 
 #------------------------------------------------------------
 # GetSeqReaderPos
@@ -2417,7 +2418,7 @@ cvInitFont(font_face, hscale, vscale, shear, thickness, line_type)
 		int thickness
 		int line_type
 	CODE:
-		CvFont* font = (CvFont *)malloc(sizeof(*font));
+		CvFont* font; Newx(font, 1, CvFont);
 		if (!font) Perl_croak(aTHX_ "cvInitFont: no core");
 		cvInitFont(font, font_face, hscale, vscale, shear, thickness, line_type);
 		RETVAL = font;
@@ -2429,7 +2430,7 @@ cvReleaseFont(font)
 	INPUT:
 		CvFont *font
 	CODE:
-		free((void *)font);
+		safefree(font);
 		font = (CvFont*)0;
 	OUTPUT:
 		font
@@ -2461,7 +2462,7 @@ cvGetTextSize(text_string, font)
 		av_push(results, newSVnv(text_size.width));
 		av_push(results, newSVnv(text_size.height));
 		av_push(results, newSVnv(baseline));
-		RETVAL = newRV((SV *)results);
+		RETVAL = newRV_inc((SV *)results);
 	OUTPUT:
 		RETVAL
 
@@ -2860,7 +2861,7 @@ cvKMeans2(samples, cluster_count, labels, termcrit)
 
 # ######################################################################
 #   CV
-#   - http://opencv.jp/opencv-1.1.0_org/docs/ref/opencvref_cv.htm
+#   - "http://opencv.jp/opencv-1.1.0_org/docs/ref/opencvref_cv.htm"
 # ######################################################################
 
 # ===========================================================
@@ -2946,7 +2947,7 @@ cvFindCornerSubPix(image, corners, win, zero_zone, criteria)
 					HV *hv = (HV *)sv_2mortal((SV *)newHV());
 					hv_store(hv, "x", 1, newSVnv(cv_corners[i].x), 0);
 					hv_store(hv, "y", 1, newSVnv(cv_corners[i].y), 0);
-					av_push(av_corners, newRV((SV*)hv));
+					av_push(av_corners, newRV_inc((SV*)hv));
 				}
 			}
 			RETVAL = count;
@@ -2986,7 +2987,7 @@ cvGoodFeaturesToTrack(image, eig_image, temp_image, corners, corner_count, quali
 				HV *hv = (HV *)sv_2mortal((SV *)newHV());
 				hv_store(hv, "x", 1, newSVnv(cv_corners[i].x), 0);
 				hv_store(hv, "y", 1, newSVnv(cv_corners[i].y), 0);
-				av_push(av_corners, newRV((SV*)hv));
+				av_push(av_corners, newRV_inc((SV*)hv));
 			}
 			RETVAL = corner_count;
 		}
@@ -3321,7 +3322,7 @@ cvMoments(arr, binary)
 		const CvArr* arr
 		int binary
 	CODE:
-		RETVAL = (CvMoments*) malloc(sizeof(CvMoments));
+		Newx(RETVAL, 1, CvMoments);
 		cvMoments(arr, RETVAL, binary);
 	OUTPUT:
 		RETVAL
@@ -3331,7 +3332,8 @@ cvReleaseMoments(moments)
 	INPUT:
 		CvMoments* moments;
 	CODE:
-		free(moments); moments = 0;
+		safefree(moments);
+		moments = 0;
 	OUTPUT:
 		moments
 
@@ -3373,7 +3375,7 @@ cvGetHuMoments(moments)
 	INPUT:
 		CvMoments* moments
 	CODE:
-		RETVAL = (CvHuMoments*) malloc(sizeof(CvHuMoments));
+		Newx(RETVAL, 1, CvHuMoments);
 		cvGetHuMoments(moments, RETVAL);
 	OUTPUT:
 		RETVAL
@@ -3383,7 +3385,8 @@ cvReleaseHuMoments(hu_moments)
 	INPUT:
 		CvHuMoments* hu_moments
 	CODE:
-		free(hu_moments); hu_moments = 0;
+		safefree(hu_moments);
+		hu_moments = 0;
 	OUTPUT:
 		hu_moments
 
@@ -3571,7 +3574,7 @@ cvGetMinMaxHistValue(hist)
 	CODE:
 		cvGetMinMaxHistValue(hist, &min_val, &max_val, min_idx, max_idx);
 		int dims = hist->mat.dims; int i;
-		// fprintf(stderr, "dims = %d\n", dims);
+		/* fprintf(stderr, "dims = %d\n", dims); */
 
 		HV *hv_min = (HV *)sv_2mortal((SV *)newHV());
 		HV *hv_max = (HV *)sv_2mortal((SV *)newHV());
@@ -3585,13 +3588,13 @@ cvGetMinMaxHistValue(hist)
 			av_push(av_max, newSVnv(max_idx[i]));
 		}
 
-		hv_store(hv_min, "idx", 3, newRV((SV *)av_min), 0);
-		hv_store(hv_max, "idx", 3, newRV((SV *)av_max), 0);
+		hv_store(hv_min, "idx", 3, newRV_inc((SV *)av_min), 0);
+		hv_store(hv_max, "idx", 3, newRV_inc((SV *)av_max), 0);
 
 		HV *hv = (HV *)sv_2mortal((SV *)newHV());
-		hv_store(hv, "min", 3, newRV((SV *)hv_min), 0);
-		hv_store(hv, "max", 3, newRV((SV *)hv_max), 0);
-		RETVAL = newRV((SV *)hv);
+		hv_store(hv, "min", 3, newRV_inc((SV *)hv_min), 0);
+		hv_store(hv, "max", 3, newRV_inc((SV *)hv_max), 0);
+		RETVAL = newRV_inc((SV *)hv);
 	OUTPUT:
 		RETVAL
 
@@ -4004,9 +4007,9 @@ cvMinEnclosingCircle(points)
 		HV *hv_center = (HV *)sv_2mortal((SV *)newHV());
 		hv_store(hv_center, "x", 1, newSVnv(center.x), 0);
 		hv_store(hv_center, "y", 1, newSVnv(center.y), 0);
-		hv_store(hv, "center", 6, newRV((SV *)hv_center), 0);
+		hv_store(hv, "center", 6, newRV_inc((SV *)hv_center), 0);
 		hv_store(hv, "radius", 6, newSVnv(radius), 0);
-		RETVAL = newRV((SV *)hv);
+		RETVAL = newRV_inc((SV *)hv);
 	OUTPUT:
 		RETVAL
 
@@ -4260,22 +4263,22 @@ cvCamShift(prob_image, window)
 		hv_store(rh_rect, "height", 6, newSVnv(comp.rect.height), 0);
 
 		hv_store(rh_comp, "area", 4, newSVnv(comp.area), 0);
-//		hv_store(rh_comp, "value", 5, newSVnv(comp.value), 0);
-		hv_store(rh_comp, "rect", 4, newRV((SV *)rh_rect), 0);
+		/* hv_store(rh_comp, "value", 5, newSVnv(comp.value), 0); */
+		hv_store(rh_comp, "rect", 4, newRV_inc((SV *)rh_rect), 0);
 
 		hv_store(rh_center, "x", 1, newSVnv(box.center.x), 0);
 		hv_store(rh_center, "y", 1, newSVnv(box.center.y), 0);
 		hv_store(rh_size, "width", 5, newSVnv(box.size.width), 0);
 		hv_store(rh_size, "height", 6, newSVnv(box.size.height), 0);
 
-		hv_store(rh_box, "center", 6, newRV((SV *)rh_center), 0);
-		hv_store(rh_box, "size", 4, newRV((SV *)rh_size), 0);
+		hv_store(rh_box, "center", 6, newRV_inc((SV *)rh_center), 0);
+		hv_store(rh_box, "size", 4, newRV_inc((SV *)rh_size), 0);
 		hv_store(rh_box, "angle", 5, newSVnv(box.angle), 0);
 
-		hv_store(rh, "comp", 4, newRV((SV *)rh_comp), 0);
-		hv_store(rh, "box", 3, newRV((SV *)rh_box), 0);
+		hv_store(rh, "comp", 4, newRV_inc((SV *)rh_comp), 0);
+		hv_store(rh, "box", 3, newRV_inc((SV *)rh_box), 0);
 
-		RETVAL = newRV((SV *)rh);
+		RETVAL = newRV_inc((SV *)rh);
 	OUTPUT:
 		RETVAL
 
@@ -4360,7 +4363,7 @@ cvCalcOpticalFlowPyrLK(prev, curr, prev_pyr, curr_pyr, prev_features, curr_featu
 			av_clear(av_features);
 			for (i = 0; i < prev_count; i++) {
 				HV *hv = plpoint2d32f(cv_curr_features[i]);
-				av_push(av_features, newRV((SV*)hv));
+				av_push(av_features, newRV_inc((SV*)hv));
 				if (av_status) {
 					av_push(av_status, newSViv(cv_status[i]));
 				}
@@ -4750,7 +4753,7 @@ cvFindChessboardCorners(image, pattern_size, corners, corner_count, flags)
 		RETVAL = cvFindChessboardCorners(image, pattern_size, cv_corners, &corner_count, flags);
 		AV *av_corners = (AV*)SvRV(corners); av_clear(av_corners); int i;
 		for (i = 0; i < corner_count; i++) {
-			av_push(av_corners, newRV((SV*)plpoint2d32f(cv_corners[i])));
+			av_push(av_corners, newRV_inc((SV*)plpoint2d32f(cv_corners[i])));
 		}
 	OUTPUT:
 		RETVAL
@@ -4972,7 +4975,7 @@ cvReprojectImageTo3D(disparity, _3dImage, Q, handleMissingValues)
 
 # #####################################################################
 #   HighGUI
-#   - http://opencv.jp/opencv-1.1.0_org/docs/ref/opencvref_highgui.htm
+#   - "http://opencv.jp/opencv-1.1.0_org/docs/ref/opencvref_highgui.htm"
 # #####################################################################
 
 # ===========================================================
@@ -5061,7 +5064,7 @@ cvCreateTrackbar(trackbar_name, window_name, value, count, callback)
 		int count
 		SV* callback
 	CODE:
-		CvTrackbar* trackbar = (CvTrackbar*)malloc(sizeof(CvTrackbar));
+		CvTrackbar* trackbar; Newx(trackbar, 1, CvTrackbar);
 		if (!trackbar) Perl_croak(aTHX_ "cvCreateTrackbar: no core");
 		trackbar->callback = 0;
 		if (SvROK(callback) && SvTYPE(SvRV(callback)) == SVt_PVCV) {
@@ -5092,7 +5095,7 @@ cvReleaseTrackbar(trackbar)
 		if (trackbar) {
 			if (trackbar->callback) SvREFCNT_dec(trackbar->callback);
 			if (trackbar->value) SvREFCNT_dec(trackbar->value);
-			free(trackbar);
+			safefree(trackbar);
 		}
 		trackbar = 0;
 	OUTPUT:
@@ -5297,7 +5300,7 @@ cvConvertImage(src, dst, flags)
 
 # #####################################################################
 #   CVAUX
-#   - http://opencv.jp/opencv-1.1.0/document/opencvref_cvaux.html
+#   - "http://opencv.jp/opencv-1.1.0/document/opencvref_cvaux.html"
 # #####################################################################
 
 # ===========================================================
@@ -5438,7 +5441,7 @@ cvGetmodMin(model)
 		av_push(av, newSVnv(model->modMin[0]));
 		av_push(av, newSVnv(model->modMin[1]));
 		av_push(av, newSVnv(model->modMin[2]));
-		RETVAL = newRV((SV *)av);
+		RETVAL = newRV_inc((SV *)av);
 	OUTPUT:
 		RETVAL
 
@@ -5457,7 +5460,7 @@ cvSetmodMin(model, v0, v1, v2)
 		av_push(av, newSVnv(model->modMin[0]));
 		av_push(av, newSVnv(model->modMin[1]));
 		av_push(av, newSVnv(model->modMin[2]));
-		RETVAL = newRV((SV *)av);
+		RETVAL = newRV_inc((SV *)av);
 	OUTPUT:
 		RETVAL
 
@@ -5470,7 +5473,7 @@ cvGetmodMax(model)
 		av_push(av, newSVnv(model->modMax[0]));
 		av_push(av, newSVnv(model->modMax[1]));
 		av_push(av, newSVnv(model->modMax[2]));
-		RETVAL = newRV((SV *)av);
+		RETVAL = newRV_inc((SV *)av);
 	OUTPUT:
 		RETVAL
 
@@ -5489,7 +5492,7 @@ cvSetmodMax(model, v0, v1, v2)
 		av_push(av, newSVnv(model->modMax[0]));
 		av_push(av, newSVnv(model->modMax[1]));
 		av_push(av, newSVnv(model->modMax[2]));
-		RETVAL = newRV((SV *)av);
+		RETVAL = newRV_inc((SV *)av);
 	OUTPUT:
 		RETVAL
 
@@ -5509,7 +5512,7 @@ cvSetcbBounds(model, v0, v1, v2)
 		av_push(av, newSVnv(model->cbBounds[0]));
 		av_push(av, newSVnv(model->cbBounds[1]));
 		av_push(av, newSVnv(model->cbBounds[2]));
-		RETVAL = newRV((SV *)av);
+		RETVAL = newRV_inc((SV *)av);
 	OUTPUT:
 		RETVAL
 
@@ -5605,7 +5608,8 @@ IplImage_set_imagedata(image, data)
 		int d = image->depth & ~IPL_DEPTH_SIGN;
 		w *= image->nChannels * d/8;
 		if (w * h > 0) {
-			unsigned char *s = sv_pv(data); int j;
+			unsigned char *s = SvPV_nolen(data);
+			int j;
 			for (j = 0; j < h; j++) {
 				memcpy(cvPtr2D(image, j, 0, NULL), s + w*j, w);
 			}

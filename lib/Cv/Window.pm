@@ -16,7 +16,7 @@ BEGIN {
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # Preloaded methods go here.
 
@@ -64,7 +64,7 @@ usage:	Cv::Window->new(
 	} else {
 		cvNamedWindow($av{-name}, $av{-flags});
 		if (my $handle = cvGetWindowHandle($av{-name})) {
-			$self = bless $handle, $class;
+			$self = bless $handle, blessed $class || $class;
 			$WINDOWS{$av{-name}} = { self => $self };
 		}
 	}
@@ -130,13 +130,13 @@ sub ResizeWindow {
     my $self = shift;
 	my %av = argv([ -width => undef,
 					-height => undef,
-					-size => undef,
 					-name => $self,
 				  ], @_);
-	if (defined($av{-size}) &&
-		!defined($av{-width}) && !defined($av{-height})) {
-		($av{-width}, $av{-height}) = cvSize($av{-size});
-		delete $av{-size};
+
+	if (defined($av{-size})) {
+		unless (defined($av{-width}) && defined($av{-height})) {
+			($av{-width}, $av{-height}) = cvSize($av{-size});
+		}
 	}
 	$av{-name} = window_name(%av);
 	unless (defined($av{-name}) &&
@@ -168,13 +168,12 @@ sub MoveWindow {
     my $self = shift;
 	my %av = argv([ -x => undef,
 					-y => undef,
-					-pt => undef,
 					-name => $self,
 				  ], @_);
-	if (defined($av{-pt}) &&
-		!defined($av{-x}) && !defined($av{-y})) {
-		($av{-x}, $av{-y}) = cvPoint($av{-pt});
-		delete $av{-pt};
+	if (defined($av{-pt})) {
+		unless (defined($av{-x}) && defined($av{-y})) {
+			($av{-x}, $av{-y}) = cvPoint($av{-pt});
+		}
 	}
 	$av{-name} = window_name(%av);
 	unless (defined($av{-name}) &&

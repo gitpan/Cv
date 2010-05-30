@@ -19,7 +19,7 @@ use Cv::Seq::Point;
 
 our @ISA = qw(Cv::Seq::Point);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # ------------------------------------------------------------
 #  ApproxChains - Approximates Freeman chain(s) with polygonal curve

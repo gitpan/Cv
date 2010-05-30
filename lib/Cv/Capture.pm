@@ -20,7 +20,7 @@ use Cv::Image;
 
 our @ISA = qw(Cv::Image);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 our %FLIPBOOK = ();
 

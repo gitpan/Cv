@@ -16,7 +16,7 @@ BEGIN {
 use Cv::Constant;
 use Cv::CxCore qw(:all);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # ======================================================================
 #  1.7. Image and Contour moments

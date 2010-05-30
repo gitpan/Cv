@@ -12,7 +12,7 @@ use Cv::Arr::Cx;
 
 our @ISA = qw(Cv::Arr::Cx);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub FETCH {
 	[ unpack("d1", cvGet2D(@{$_[0]}, $_[1])) ];

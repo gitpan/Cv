@@ -18,7 +18,7 @@ BEGIN {
 	$Data::Dumper::Terse = 1;
 }
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # ------------------------------------------------------------
 #  CreateSubdivDelaunay2D - Creates empty Delaunay triangulation

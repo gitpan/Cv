@@ -17,7 +17,7 @@ use Cv::Constant;
 use Cv::CxCore qw(:all);
 use Cv::Mat::Ghost;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # Preloaded methods go here.
 

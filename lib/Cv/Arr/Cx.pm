@@ -13,7 +13,7 @@ use Cv::Arr qw(:all);
 
 our @ISA = qw(Tie::Array Cv::Arr);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub TIEARRAY {
 	bless $_[1], $_[0];
