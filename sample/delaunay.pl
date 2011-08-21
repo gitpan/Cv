@@ -3,51 +3,36 @@
 
 use lib qw(blib/lib blib/arch);
 use strict;
-use Cv 0.03;
-
-&run;
-exit 0;
+use Cv;
 
 # the script demostrates iterative construction of delaunay
 # triangulation and voronoi tesselation
 
 sub draw_subdiv_point {
 	my ($img, $fp, $color) = @_;
-	$img->Circle(
-		-center => $fp,
-		-radius => 3,
-		-color => $color,
-		-thickness => &CV_FILLED,
-		-line_type => 8,
-		-shift => 0,
-		);
+	$img->Circle($fp, 3, $color, CV_FILLED, 8, 0);
 }
 
 sub draw_subdiv_edge {
 	my ($img, $edge, $color) = @_;
-	my $org = $edge->Org;
-	my $dst = $edge->Dst;
-	if ($org && $dst) {
-		$img->Line(
-			-pt1 => $org,
-			-pt2 => $dst,
-			-color => $color,
-			-thickness => 1,
-			-line_type => &CV_AA,
-			-shift => 0,
-			);
-    }
+	my $org_pt = Cv->Subdiv2DEdgeOrg($edge);
+	my $dst_pt = Cv->Subdiv2DEdgeDst($edge);
+	if ($org_pt && $dst_pt) {
+		my $org = cvPoint(map { cvRound($_) } @{$org_pt->[2]});
+		my $dst = cvPoint(map { cvRound($_) } @{$dst_pt->[2]});
+		$img->Line($org, $dst, $color, 1, CV_AA, 0);
+	}
 }
 
 sub draw_subdiv {
 	my ($img, $subdiv, $delaunay_color, $voronoi_color) = @_;
 	my $total = $subdiv->edges->total;
-	my $reader = $subdiv->edges->StartReadSeq;
+	$subdiv->edges->StartReadSeq(my $reader);
 	for (1 .. $total) {
-		my $edge = Cv->Subdiv2DEdge($reader->ptr);
-		if (CV_IS_SET_ELEM($edge)) {
-			my $edge2 = Cv->Subdiv2DEdge(\ (my $tmp = ${$reader->ptr} + 1));
-			draw_subdiv_edge($img, $edge2, $voronoi_color);
+		my $ref_edge = $reader->ptr;
+		if (Cv::IS_SET_ELEM($ref_edge)) {
+			my $edge = ${$ref_edge};
+			draw_subdiv_edge($img, $edge + 1, $voronoi_color);
 			draw_subdiv_edge($img, $edge, $delaunay_color);
 		}
         $reader->NextSeqElem;
@@ -56,46 +41,45 @@ sub draw_subdiv {
 
 sub locate_point {
 	my ($subdiv, $fp, $img, $active_color) = @_;
-    $subdiv->Locate(-pt => $fp, -edge => \ (my $e0));
+	$subdiv->Locate($fp, my $e0, my $p);
 	if ($e0) {
 		my $e = $e0;
 		do {
 			draw_subdiv_edge($img, $e, $active_color);
-			$e = $e->GetEdge(-type => &CV_NEXT_AROUND_LEFT);
-		} while ($e->ne($e0));
+			$e = Cv->Subdiv2DGetEdge($e, CV_NEXT_AROUND_LEFT);
+		} while ($e != $e0);
 	}
 	draw_subdiv_point($img, $fp, $active_color);
 }
 
-
 sub draw_subdiv_facet {
 	my ($img, $edge) = @_;
-	if (my $t = $edge) {
-		my @buf = ();
+	my $t = $edge;
+	my $i; my $count = 0;
 
-		# gather points
-		do {
-			return undef unless my $pt = $t->Org;
-			push(@buf, scalar cvPoint($pt));
-			$t = $t->GetEdge(-type => &CV_NEXT_AROUND_LEFT);
-		} while ($t->ne($edge));
+    # count number of edges in facet
+	do {
+		$count++;
+		$t = Cv->Subdiv2DGetEdge($t, CV_NEXT_AROUND_LEFT);
+	} while ($t != $edge);
 
-		$img->FillConvexPoly(
-			-pts => \@buf,
-			-color => &CV_RGB(rand(255), rand(255), rand(255)),
-			-line_type => &CV_AA,
-			-shift => 0,
-			);
-		$img->PolyLine(
-			-pts => [ \@buf ],
-			-contours => 1,
-			-is_closed => 1,
-			-color => &CV_RGB(0, 0, 0),
-			-thickness => 1,
-			-line_type => &CV_AA,
-			-shift => 0,
-			);
-		draw_subdiv_point($img, $edge->Rotate(1)->Dst, &CV_RGB(0, 0, 0));
+	my @buf = ();
+
+	# gather points
+	$t = $edge;
+	for ($i = 0; $i < $count; $i++) {
+		my $pt = Cv->Subdiv2DEdgeOrg($t);
+		last unless $pt;
+		push(@buf, cvPoint(map { cvRound($_) } @{$pt->[2]}));
+		$t = Cv->Subdiv2DGetEdge($t, CV_NEXT_AROUND_LEFT);
+	}
+	
+	if ($i == $count) {
+		my $random_color = CV_RGB(rand(255), rand(255), rand(255));
+		$img->FillConvexPoly(\@buf, $random_color, CV_AA, 0);
+		$img->PolyLine([ \@buf ], 1, CV_RGB(0, 0, 0), 1, CV_AA, 0);
+		my $pt = Cv->Subdiv2DEdgeDst(Cv->Subdiv2DRotateEdge($edge, 1));
+		draw_subdiv_point($img, [@{$pt->[2]}], &CV_RGB(0, 0, 0));
 	}
 }
 
@@ -103,63 +87,59 @@ sub paint_voronoi {
 	my ($subdiv, $img) = @_;
     my $total = $subdiv->edges->total;
     $subdiv->CalcVoronoi;
-	my $reader = $subdiv->edges->StartReadSeq;
+	$subdiv->edges->StartReadSeq(my $reader, 0);
 	for (1 .. $total) {
-		my $edge = Cv->Subdiv2DEdge($reader->ptr);
-        if (CV_IS_SET_ELEM($edge)) {
-            draw_subdiv_facet($img, $edge->Rotate(1)); # left
-            draw_subdiv_facet($img, $edge->Rotate(3)); # right
-        }
+		my $ref_edge = $reader->ptr;
+        if (Cv::IS_SET_ELEM($ref_edge)) {
+			my $edge = ${$ref_edge};
+            draw_subdiv_facet($img, Cv->Subdiv2DRotateEdge($edge, 1)); # left
+            draw_subdiv_facet($img, Cv->Subdiv2DRotateEdge($edge, 3)); # right
+		}
         $reader->NextSeqElem;
     }
 }
 
-
 sub run {
 	my $win = "source";
-    my $rect = { 'x' => 0, 'y' => 0, 'width' => 600, 'height' => 600 };
+    my $rect = cvRect(0, 0, 600, 600);
 
-    my $active_facet_color = &CV_RGB(255,   0,   0);
-    my $delaunay_color     = &CV_RGB(  0,   0,   0);
-    my $voronoi_color      = &CV_RGB(  0, 180,   0);
-    my $bkgnd_color        = &CV_RGB(255, 255, 255);
+    my $active_facet_color = CV_RGB(255,   0,   0);
+    my $delaunay_color     = CV_RGB(  0,   0,   0);
+    my $voronoi_color      = CV_RGB(  0, 180,   0);
+    my $bkgnd_color        = CV_RGB(255, 255, 255);
 
-    my $img = Cv->CreateImage(
-		-size => scalar cvSize($rect),
-		-depth => 8, -channels => 3,
-		);
-    $img->Set(-value => $bkgnd_color);
-	Cv->NamedWindow(-window_name => $win, -flags => 1);
+    my $img = Cv::Image->new([600, 600], CV_8UC3)->fill($bkgnd_color);
+	Cv->NamedWindow($win, 1);
 
-	my $storage = Cv->CreateMemStorage(0);
-    my $subdiv = Cv->CreateSubdivDelaunay2D(
-		-rect => $rect, -storage => $storage,
-		);
+	my $storage = Cv::MemStorage->new(0);
+    my $subdiv = Cv::Subdiv2D->createDelaunay([0, 0, 600, 600], $storage);
 
     print ("Delaunay triangulation will be build now interactively.\n",
 		   "To stop the process, press any key\n\n");
 
     for (1 .. 200) {
-        my $fp = cvPoint(
-			-x => rand($rect->{width}  - 10) + 5,
-			-y => rand($rect->{height} - 10) + 5,
+        my $fp = cvPoint2D32f(
+			map { rand($_ - 10) + 5 } ($img->width, $img->height)
 			);
 
         locate_point($subdiv, $fp, $img, $active_facet_color);
 
-        $img->ShowImage(-window_name => $win);
+        $img->ShowImage($win);
         last if (Cv->WaitKey(100) >= 0);
 
         $subdiv->DelaunayInsert($fp);
         $subdiv->CalcVoronoi;
-		$img->Set(-value => $bkgnd_color);
+		$img->fill($bkgnd_color);
         draw_subdiv($img, $subdiv, $delaunay_color, $voronoi_color);
-        $img->ShowImage(-window_name => $win);
+        $img->ShowImage($win);
         last if (Cv->WaitKey(100) >= 0);
     }
 
-	$img->Set(-value => $bkgnd_color);
+	$img->fill($bkgnd_color);
     paint_voronoi($subdiv, $img);
-    $img->ShowImage(-window_name => $win);
+    $img->ShowImage($win);
     Cv->WaitKey(0);
 }
+
+&run;
+exit 0;

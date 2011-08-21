@@ -10,63 +10,56 @@ my $filename = @ARGV > 0 ? shift : dirname($0).'/'."lena.jpg";
 my $im = Cv->LoadImage($filename, CV_LOAD_IMAGE_GRAYSCALE) or 
 	die "Image was not loaded.\n";
 
-my $realInput      = Cv->CreateImage([$im->GetSize], IPL_DEPTH_64F, 1);
-my $imaginaryInput = Cv->CreateImage([$im->GetSize], IPL_DEPTH_64F, 1)->Zero;
-my $complexInput   = Cv->CreateImage([$im->GetSize], IPL_DEPTH_64F, 2);
+my $realInput      = Cv::Image->new($im->sizes, CV_64FC1);
+my $imaginaryInput = Cv::Image->new($im->sizes, CV_64FC1)->Zero;
+my $complexInput   = Cv::Image->new($im->sizes, CV_64FC2);
 
-Cv->Scale(-src => $im, -dst => $realInput, -scale => 1.0, -shift => 0.0);
-Cv->Merge(-src0 => $realInput, -src1 => $imaginaryInput, -dst => $complexInput);
+$im->Scale($realInput, 1.0, 0.0);
+Cv->Merge([$realInput, $imaginaryInput], $complexInput);
 
 my $dft_M = Cv->GetOptimalDFTSize($im->height - 1);
 my $dft_N = Cv->GetOptimalDFTSize($im->width  - 1);
+my $dft_A = Cv::Mat->new([$dft_M, $dft_N], CV_64FC2);
 
-my $dft_A = Cv->CreateMat(-rows => $dft_M, -cols => $dft_N, -type => CV_64FC2);
-my $image_Re = Cv->CreateImage([$dft_N, $dft_M], IPL_DEPTH_64F, 1);
-my $image_Im = Cv->CreateImage([$dft_N, $dft_M], IPL_DEPTH_64F, 1);
+my $image_Re = Cv::Image->new([$dft_M, $dft_N], CV_64FC1);
+my $image_Im = Cv::Image->new([$dft_M, $dft_N], CV_64FC1);
 
 # copy A to dft_A and pad dft_A with zeros
-$complexInput->Copy(
-	-dst => $dft_A->GetSubRect(
-		 -submat => my $tmp = $im->CloneImage,
-		 -rect => [0, 0, $im->width, $im->height]),
+my $tmp = $complexInput->Copy(
+	$dft_A->GetSubRect([0, 0, $im->width, $im->height])
 	);
 if ($dft_A->cols > $im->width) {
 	$dft_A->GetSubRect(
-		-submat => $tmp,
-		-rect => [ $im->width, 0, $dft_A->cols - $im->width, $im->height ])
-		->Zero;
+		$tmp, [ $im->width, 0, $dft_A->cols - $im->width, $im->height ]
+		);
+	$tmp->Zero;
 }
 
 # no need to pad bottom part of dft_A with zeros because of
 # use nonzero_rows parameter in cvDFT() call below
-
-$dft_A = $dft_A->DFT(
-	-flags => CV_DXT_FORWARD,
-	-nonzero_rows => $complexInput->height);
+$dft_A = $dft_A->DFT(CV_DXT_FORWARD, $complexInput->height);
 
 $im->ShowImage("win");
 
 # Split Fourier in real and imaginary parts
-$dft_A->Split($image_Re, $image_Im, undef, undef);
+$dft_A->Split($image_Re, $image_Im);
 
 # Compute the magnitude of the spectrum Mag = sqrt(Re^2 + Im^2)
-$image_Re = Cv
-	->Add(-src1 => $image_Re->Pow(2),
-		  -src2 => $image_Im->Pow(2))
+$image_Re =
+	Cv::Arr::Add($image_Re->Pow(2), $image_Im->Pow(2))
 	->Pow(0.5)
-	
 # Compute log(1 + Mag)
-	->AddS(-value => scalar cvScalarAll(1.0))
+	->Add(cvScalarAll(1.0))
 	->Log;
+
 
 # Rearrange the quadrants of Fourier image so that the origin is at
 # the image center
 &cvShiftDFT;
 
-$image_Re->MinMaxLoc(-min_val => \(my $min), -max_val => \(my $max));
+$image_Re->MinMaxLoc(my $min, my $max, my $min_loc, my $max_loc);
 if (my $d = $max - $min) {
-	$image_Re =	$image_Re
-		->Scale(-scale => 1 / $d, -shift => -$min / $d);
+	$image_Re =	$image_Re->Scale(1 / $d, -$min / $d);
 }
 $image_Re->ShowImage("magnitude");
 
@@ -82,11 +75,9 @@ sub cvShiftDFT {
 
     if ($dst->width  != $src->width ||
 		$dst->height != $src->height){
-        Cv->Error(-status => CV_StsUnmatchedSizes,
-				  -func_name => "cvShiftDFT",
-				  -err_msg => "Source and Destination arrays must have equal sizes",
-				  -fine_name => __FILE__,
-				  -line => __LINE__,
+        Cv->cvError(CV_StsUnmatchedSizes, "cvShiftDFT",
+					"Source and Destination arrays must have equal sizes",
+					__FILE__, __LINE__,
 			);
     }
 
@@ -94,44 +85,43 @@ sub cvShiftDFT {
     my $cy = $src->height/2; # image center
 	my $type = $src->GetElemType;
 	
-	my $tmp = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $q1  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $q2  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $q3  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $q4  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $d1  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $d2  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $d3  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
-	my $d4  = Cv->CreateMat(-rows => $cy, -cols => $cx, -type => $type);
+	my $tmp = Cv::Mat->new([ $cy, $cx], $type);
+	my $q1  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $q2  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $q3  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $q4  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $d1  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $d2  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $d3  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $d4  = Cv::Mat->new([ $cy, $cx], $type, 1);
 
-	$src->GetSubRect(-submat => $q1, -rect => [0,     0, $cx, $cy]);
-	$src->GetSubRect(-submat => $q2, -rect => [$cx,   0, $cx, $cy]);
-	$src->GetSubRect(-submat => $q3, -rect => [$cx, $cy, $cx, $cy]);
-	$src->GetSubRect(-submat => $q4, -rect => [0,   $cy, $cx, $cy]);
-	$src->GetSubRect(-submat => $d1, -rect => [0,     0, $cx, $cy]);
-	$src->GetSubRect(-submat => $d2, -rect => [$cx,   0, $cx, $cy]);
-	$src->GetSubRect(-submat => $d3, -rect => [$cx, $cy, $cx, $cy]);
-	$src->GetSubRect(-submat => $d4, -rect => [0,   $cy, $cx, $cy]);
+	$src->GetSubRect($q1, [0,     0, $cx, $cy]);
+	$src->GetSubRect($q2, [$cx,   0, $cx, $cy]);
+	$src->GetSubRect($q3, [$cx, $cy, $cx, $cy]);
+	$src->GetSubRect($q4, [0,   $cy, $cx, $cy]);
+	$src->GetSubRect($d1, [0,     0, $cx, $cy]);
+	$src->GetSubRect($d2, [$cx,   0, $cx, $cy]);
+	$src->GetSubRect($d3, [$cx, $cy, $cx, $cy]);
+	$src->GetSubRect($d4, [0,   $cy, $cx, $cy]);
 
     if ($src != $dst) {
-        unless (CV_ARE_TYPES_EQ( $q1, $d1 )) {
-            Cv->Error(-status => CV_StsUnmatchedFormats,
-					  -func_name => "cvShiftDFT",
-					  -err_msg => "Source and Destination arrays must have the same format",
-					  -file_name => __FILE__,
-					  -line => __LINE__
+        unless (CV_ARE_TYPES_EQ($q1, $d1)) {
+            Cv->cvError(
+				CV_StsUnmatchedFormats, "cvShiftDFT",
+				"Source and Destination arrays must have the same format",
+				__FILE__, __LINE__
 				);
         }
-        $q3->Copy(-dst => $d1);
-        $q4->Copy(-dst => $d2);
-        $q1->Copy(-dst => $d3);
-        $q2->Copy(-dst => $d4);
+        $q3->Copy($d1);
+        $q4->Copy($d2);
+        $q1->Copy($d3);
+        $q2->Copy($d4);
     } else {
-        $q3->Copy(-dst => $tmp);
-        $q1->Copy(-dst => $q3);
-        $tmp->Copy(-dst => $q1);
-        $q4->Copy(-dst => $tmp);
-        $q2->Copy(-dst => $q4);
-        $tmp->Copy(-dst => $q2);
+        $q3->Copy($tmp);
+        $q1->Copy($q3);
+        $tmp->Copy($q1);
+        $q4->Copy($tmp);
+        $q2->Copy($q4);
+        $tmp->Copy($q2);
     }
 }

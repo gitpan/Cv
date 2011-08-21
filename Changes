@@ -1,5 +1,57 @@
 Revision history for Cv.pm
 
+0.07 - 2011-08-17
+
+	* tested OpenCV 2.2.0 and 2.3.0 
+	* decided to remove keyword parameter.
+	* The argument was along reference manual C in the OpenCV documentation.
+	* Added the configuration to use Inline C.
+	* added some sample scripts
+       - sample/convexhull-arr.pl
+       - sample/convexhull-seq.pl
+       - sample/fback_c.pl
+       - sample/find_obj.pl
+       - sample/flipbook.pl
+       - sample/helper.pl
+       - sample/houghlines-prob.pl
+       - sample/houghlines-stan.pl
+       - sample/mser_sample.pl
+       - sample/polar_transforms-linear.pl
+       - sample/polar_transforms-log.pl
+       - sample/tiehash.pl
+     * added modules
+       - lib/Cv/BGCodeBookModel.pm
+       - lib/Cv/ChildMemStorage.pm
+       - lib/Cv/Font.pm
+       - lib/Cv/Graph.pm
+       - lib/Cv/GraphScanner.pm
+       - lib/Cv/MatND.pm
+       - lib/Cv/MatND/Ghost.pm
+       - lib/Cv/String.pm
+       - lib/Cv/SeqReader.pm
+       - lib/Cv/Set.pm
+       - lib/Cv/SparseMat.pm
+       - lib/Cv/SparseMat/Ghost.pm
+     * deleted modules
+       - lib/Cv/Arr/C1.pm
+       - lib/Cv/Arr/C2.pm
+       - lib/Cv/Arr/C3.pm
+       - lib/Cv/Arr/C4.pm
+       - lib/Cv/Arr/Cx.pm
+       - lib/Cv/BGCodebook.pm
+       - lib/Cv/CxCore.pm
+       - lib/Cv/HaarDetectObjects.pm
+       - lib/Cv/HoughCircles.pm
+       - lib/Cv/HoughLines.pm
+       - lib/Cv/HoughLines2.pm
+       - lib/Cv/HuMoments.pm
+       - lib/Cv/MotionHistory.pm
+       - lib/Cv/Seq/Reader.pm
+       - lib/Cv/Subdiv2D/Edge.pm
+       - lib/Cv/Text.pm
+       - lib/Cv/TieArr.pm
+       - lib/Cv/Window.pm
+
 0.04 - 2010-05-30
 
 	* support for i386-freebsd 8.0-release

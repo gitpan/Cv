@@ -12,38 +12,39 @@ my $src = undef;
 my $seg = undef;
 
 my $filename = @ARGV > 0? shift : dirname($0).'/'."fruits.jpg";
-my $image = Cv->LoadImage(-filename => $filename, -flags => 1)
+my $image = Cv->LoadImage($filename, 1)
     or die "$0: can't loadimage $filename\n";
 
-$image->SetImageROI([ 0, 0,
-					  $image->width  & -(1 << $level),
-					  $image->height & -(1 << $level),
-					]);
+$image->roi([ 0, 0, map { $_ & -(1 << $level) } @{$image->size} ]);
 
 Cv->NamedWindow("Source", 0);
-$src = $image->CloneImage
-    ->ShowImage("Source");
-$seg = $image->CloneImage;
+Cv->NamedWindow("Segmentation", 0);
+
+$src = $image->Clone;
+$src->ShowImage("Source");
+$seg = $image->Clone;
 
 # segmentation of the color image
 my ($threshold1, $threshold2) = (255, 30);
+my $block_size = 1000;
+my $storage = Cv::MemStorage->new($block_size);
 
 sub on_segment {
-    my $block_size = 1000;
-    $seg = $src->PyrSegmentation(
-		-level => $level,
-		-threshold1 => $threshold1 + 1,
-		-threshold2 => $threshold2 + 1,
-	);
+    $src->PyrSegmentation(
+		$seg, $storage, my $comp, $level, $threshold1 + 1, $threshold2 + 1,
+		);
     $seg->ShowImage("Segmentation");
 }
 
-Cv->NamedWindow("Segmentation", 0)
-	->CreateTrackbar(-name => "Threshold1", -value => \$threshold1,
-					 -count => 255, -callback => \&on_segment)
-	->CreateTrackbar(-name => "Threshold2", -value => \$threshold2,
-					 -count => 255, -callback => \&on_segment);
+Cv->CreateTrackbar(
+	"Threshold1", "Segmentation", $threshold1, 255, \&on_segment,
+	);
+Cv->CreateTrackbar(
+	"Threshold2", "Segmentation", $threshold2, 255, \&on_segment,
+	);
+
 $seg->ShowImage("Segmentation");
 
 &on_segment;
+
 Cv->WaitKey(0);

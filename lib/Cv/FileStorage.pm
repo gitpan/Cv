@@ -2,65 +2,51 @@
 
 package Cv::FileStorage;
 
-use 5.008000;
+use 5.008008;
 use strict;
 use warnings;
-use Carp;
-use Scalar::Util qw(blessed);
-use Data::Dumper;
 
 BEGIN {
-	$Data::Dumper::Terse = 1;
+  Cv::aliases(
+	  [ 'cvWrite' ],
+	  [ 'cvGetFileNodeByName' ],
+	  );
 }
 
-use Cv::Constant;
-use Cv::CxCore qw(:all);
-
-our $VERSION = '0.04';
-
-# Preloaded methods go here.
+our %ClassOf = (
+	'opencv-image' => 'Cv::Image',
+	'opencv-matrix' => 'Cv::Mat',
+	'opencv-nd-matrix' => 'Cv::MatND',
+	'opencv-sparse-matrix' => 'Cv::SparseMat',
+	'opencv-sequence' => 'Cv::Seq',
+	'opencv-sequence-tree' => 'Cv::Seq', # Cv::Contour?
+	'opencv-graph' => 'Cv::Graph',
+	'opencv-haar-classifier' => 'Cv::HaarClassifierCascade',
+	);
 
 sub new {
-    my $class = shift;
-	my %av = &argv([ -filename => 0,
-					 -flags => undef,
-					 -memstorage => \0,
-				   ], @_);
-	my $fs = cvOpenFileStorage($av{-filename}, $av{-memstorage}, $av{-flags});
-	bless $fs, $class;
+	my $class = shift;
+	Cv::cvOpenFileStorage(@_);
 }
 
-sub DESTROY {
-	my $self = shift;
-	cvReleaseFileStorage($self);
+sub Bless {
+	my $p = shift;
+	my $t = Cv::cvTypeOf($p);
+	if (my $class = $ClassOf{$t->type_name}) {
+		bless $p, $class;
+	} else {
+		$p;
+	}
 }
 
-sub Write {
-	my $self = shift;
-	my %av = &argv([ -name => undef,
-					 -ptr => \0,
-					 -attributes => cvAttrList(\0, \0),
-					 -fs => $self,
-				   ], @_);
-	cvWrite($av{-fs}, $av{-name}, $av{-ptr}, $av{-attributes});
+sub Load {
+	my $class = shift;
+	Bless(Cv::cvLoad(@_));
 }
 
 sub Read {
-	my $self = shift;
-	my %av = &argv([ -node => undef,
-					 -attributes => \0,
-					 -fs => $self,
-				   ], @_);
-	cvRead($av{-fs}, $av{-node}, $av{-attributes});
-}
-
-sub GetFileNodeByName {
-	my $self = shift;
-	my %av = &argv([ -name => undef,
-					 -map => \0,
-					 -fs => $self,
-				   ], @_);
-	cvGetFileNodeByName($av{-fs}, $av{-map}, $av{-name});
+	Bless(cvRead(@_));
 }
 
 1;
+__END__

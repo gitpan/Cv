@@ -5,46 +5,137 @@ use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
 
+package Cv::Arr::OpticalFlowPyrLK;
+use Cv;
+
+sub new {
+	my $class = shift;
+	my $gray = shift;
+	bless {
+		gray => $gray,
+		points => [],
+		MAX_COUNT => 500,
+		flags => 0,
+		win_size => [ 10, 10 ],
+		term => Cv::cvTermCriteria(
+			CV_TERMCRIT_ITER | CV_TERMCRIT_EPS,
+			20, 0.03,
+			),
+	};
+}
+
+sub init {
+	my $self = shift;
+	my $gray = shift;
+	$self->{gray} = $gray;
+	my $eigImage = Cv::Image->new($gray->sizes, CV_32FC1);
+	my $tempImage = Cv::Image->new($gray->sizes, CV_32FC1);
+	Cv::Arr::cvGoodFeaturesToTrack(
+		$self->{gray}, $eigImage, $tempImage, $self->{points},
+		$self->{MAX_COUNT},
+		0.01, 10,
+		);
+	Cv::Arr::cvFindCornerSubPix(
+		$self->{gray}, $self->{points}, $self->{win_size}, [ -1, -1 ],
+		$self->{term},
+		);
+	$self->{points};
+}
+
+sub calc {
+	my $self = shift;
+	my $gray = shift;
+	$self->{prev_gray} = $self->{gray};
+	$self->{gray} = $gray;
+	$self->{prev_pyramid} = $self->{pyramid} || $gray->new;
+	$self->{pyramid} = $gray->new;
+	$self->{prev_points} = $self->{points};
+	$self->{points} = [];
+	Cv::Arr::cvCalcOpticalFlowPyrLK(
+		$self->{prev_gray}, $self->{gray},
+		$self->{prev_pyramid}, $self->{pyramid},
+		$self->{prev_points}, $self->{points},
+		$self->{win_size}, 3,
+		my $status = undef, my $track_error = undef,
+		$self->{term},
+		$self->{flags},
+		);
+	$self->{flags} |= CV_LKFLOW_PYR_A_READY;
+	$self->{points};
+}
+
+sub add {
+	my $self = shift;
+	if (@{$self->{points}} < $self->{MAX_COUNT}) {
+		$self->{gray} = shift;
+		my $pt = shift;
+		Cv::Arr::cvFindCornerSubPix(
+			$self->{gray}, my $p = [ $pt ], $self->{win_size}, [ -1, -1 ],
+			$self->{term},
+			);
+		push(@{$self->{points}}, @{$p});
+		return 1;
+	}
+	0;
+}
+
+sub remove {
+	my $self = shift;
+	if (my $pt = shift) {
+		my @good_points = ();
+		foreach my $p (@{$self->{points}}) {
+			if ($pt) {
+				my $dx = $pt->[0] - $p->[0];
+				my $dy = $pt->[1] - $p->[1];
+				if ($dx*$dx + $dy*$dy <= 25) {
+					$pt = undef;
+					next;
+				}
+			}
+			push(@good_points, $p);
+		}
+		$self->{points} = \@good_points;
+		return 1 unless $pt;
+	}
+	0;
+}
+
+sub points {
+	my $self = shift;
+	wantarray ? @{$self->{points}} : $self->{points};
+}
+
+package main;
+
 my $image = undef;
-my $grey = undef;
-my $prev_grey = undef;
-my $pyramid = undef;
-my $prev_pyramid = undef;
-
-my $win_size = [ 10, 10 ];
-my $MAX_COUNT = 500;
-my $points = [];
-my $prev_points = [];
-
-my $add_remove_pt = 0;
-my $pt;
-
+my $add_remove_pt = undef;
+# my $pt;
 
 sub on_mouse {
 	my ($event, $x, $y, $flags, $param) = @_;
     return unless $image;
 	$y = $image->height - $y if ($image->origin);
 	if ($event == CV_EVENT_LBUTTONDOWN) {
-        $pt = { 'x' => $x, 'y' => $y };
-        $add_remove_pt = 1;
+        # $pt = [ $x, $y ];
+        $add_remove_pt = [ $x, $y ];
     }
 }
 
 
 my $capture = undef;
 if (@ARGV == 0) {
-	$capture = Cv->CreateCameraCapture(0);
+    $capture = Cv::Capture->fromCAM(0);
 } elsif (@ARGV == 1 && $ARGV[0] =~ /^\d$/) {
-	$capture = Cv->CreateCameraCapture($ARGV[0]);
+    $capture = Cv::Capture->fromCAM($ARGV[0]);
 } else {
-	$capture = Cv->CreateFileCapture($ARGV[0]);
+    $capture = Cv::Capture->fromFile($ARGV[0]);
 }
 die "$0: Could not initialize capturing...\n"
 	unless $capture;
 
 # print a welcome message, and the OpenCV version
 printf("Welcome to lkdemo, using OpenCV version %s (%d.%d.%d)\n",
-	   CV_VERSION, CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION);
+	   cvVersion, CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION);
 
 print ("Hot keys: \n",
 	   "\tESC - quit the program\n",
@@ -53,145 +144,54 @@ print ("Hot keys: \n",
 	   "\tn - switch the \"night\" mode on/off\n",
 	   "To add/remove a feature point click it\n");
 
-Cv->NamedWindow(-name => "LkDemo")
-	->SetMouseCallback(-callback => \&on_mouse);
+Cv->NamedWindow("LkDemo");
+Cv->SetMouseCallback("LkDemo", \&on_mouse);
 
 my $need_to_init = 0;
 my $night_mode = 0;
-my $flags = 0;
+my $flow;
 
 while (my $frame = $capture->QueryFrame) {
 
 	unless ($image) {
-		$image = Cv->new(-size => scalar $frame->GetSize,
-						 -depth => 8, -channels => 3,
-						 -origin => $frame->origin);
-		$flags = 0;
-	}
-	$frame->Copy(-dst => $image);
-	$grey = $image->CvtColor(CV_BGR2GRAY);
-	$pyramid = $grey->new;
-
-	if ($night_mode) {
-		$image->Zero;
+		$image = Cv::Image->new($frame->sizes, CV_8UC3);
 	}
 
+	$frame->copy($image);
+	my $gray = $image->CvtColor(CV_BGR2GRAY);
+	$image->Zero if $night_mode;
 	if ($need_to_init) {
 		# automatic initialization
-		$grey->GoodFeaturesToTrack(
-			# -image => $grey,
-			# -eig_image => $grey->new(-depth => 32),
-			# -temp_image => $grey->new(-depth => 32),
-			-corners => $points = [],
-			-corner_count => $MAX_COUNT,
-			-quality_level => 0.01,
-			-min_distance => 10,
-			-mask => \0,
-			-block_size => 3,
-			-use_harris => 0,
-			-k => 0.04,
-			);
-
-		$grey->FindCornerSubPix(
-			# -image => $grey,
-			-corners => $points,
-			# -count => scalar @{$points},
-			-win => $win_size,
-			-zero_zone => [ -1, -1 ],
-			-criteria => scalar cvTermCriteria(
-				 -type => CV_TERMCRIT_ITER | CV_TERMCRIT_EPS,
-				 -max_iter => 20, -epsilon => 0.03),
-			);
-
-		$flags = 0;
-        $need_to_init = 0;
-
-	} elsif (@{$prev_points} > 0) {
-		my $temp_points = [];
-		Cv->CalcOpticalFlowPyrLK(
-			-prev => $prev_grey,
-			-curr => $grey,
-			-prev_pyr => $prev_pyramid,
-			-curr_pyr => $pyramid,
-			-prev_features => $prev_points,
-			-curr_features => $temp_points,
-			-win_size => $win_size,
-			-level => 3,
-			# -status => my $status = [],
-			# -track_error => my $track_error = [],
-			-criteria => scalar cvTermCriteria(
-				 -type => CV_TERMCRIT_ITER | CV_TERMCRIT_EPS,
-				 -max_iter => 20, -epsilon => 0.03),
-			-flags => $flags,
-			);
-		$flags |= CV_LKFLOW_PYR_A_READY;
-
-		# foreach my $i (0 .. $#{$temp_points}) {
-		# 	$temp_points->[$i]->{status} = $status->[$i];
-		# 	$temp_points->[$i]->{track_status} = $track_error->[$i];
-		# }
-
-		my @good_points = ();
-		foreach my $p (@{$temp_points}) {
-			if ($add_remove_pt) {
-				my $dx = $pt->{x} - $p->{x};
-				my $dy = $pt->{y} - $p->{y};
-				if ($dx*$dx + $dy*$dy <= 25) {
-					$add_remove_pt = 0;
-					next;
-				}
+		$flow = Cv::Arr::OpticalFlowPyrLK->new;
+		$flow->init($gray);
+		$need_to_init = 0;
+	} elsif ($flow) {
+		$flow->calc($gray);
+		if ($add_remove_pt) {
+			if ($flow->remove($add_remove_pt)) {
+				$add_remove_pt = undef;
 			}
-			# next if (!$p->{status});
-			push(@good_points, $p);
-			$image->Circle(
-				# -img => $image,
-				-center => $p,
-				-radius => 3,
-				-color => scalar CV_RGB(0, 255, 0),
-				-thickness => -1,
-				-line_type => 8,
-				-shift => 0,
-				);
 		}
-		$points = \@good_points;
 	} else {
-		$points = [];
-		$flags = 0;
+		$flow = undef;
 	}
-
 	if ($add_remove_pt) {
-		if (@{$points} < $MAX_COUNT) {
-			$grey->FindCornerSubPix(
-				# -image => $grey,
-				-corners => my $p = [ $pt ],
-				# -count => 1,
-				-win => $win_size,
-				-zero_zone => [ -1, -1 ],
-				-criteria => scalar cvTermCriteria(
-					 -type => CV_TERMCRIT_ITER | CV_TERMCRIT_EPS,
-					 -max_iter => 20, -epsilon => 0.03),
-				);
-			push(@{$points}, @{$p});
-		}
-		$add_remove_pt = 0;
+		$flow = Cv::Arr::OpticalFlowPyrLK->new unless $flow;
+		$flow->add($gray, $add_remove_pt);
+		$add_remove_pt = undef;
 	}
 
-	$prev_grey    = $grey;
-	$prev_pyramid = $pyramid;
-	$prev_points  = $points;
-	
+	if ($flow) {
+		$image->Circle($_, 3, CV_RGB(0, 255, 0), -1, 8, 0)
+			for $flow->points;
+	}
 	$image->ShowImage("LkDemo");
 
-	my $c = Cv->WaitKey(10);
-	next unless ($c >= 0);
-	
-	if (($c &= 0x7f) == 27) {
-		last;
-	} elsif ($c == ord('r')) {
-		$need_to_init = 1;
-	} elsif ($c == ord('c')) {
-		$prev_points = [];
-	} elsif ($c == ord('n')) {
-		$night_mode ^= 1;
+	if ((my $c = Cv->WaitKey(10)) >= 0) {
+		$c &= 0x7f;
+		last if $c == 27 || $c == ord('q');
+		$need_to_init = 1 if $c == ord('r');
+		$flow = undef if $c == ord('c');
+		$night_mode ^= 1 if $c == ord('n');
 	}
 }

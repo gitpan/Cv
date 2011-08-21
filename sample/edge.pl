@@ -3,11 +3,9 @@
 
 use strict;
 use lib qw(blib/lib blib/arch);
+
 use Cv;
 use File::Basename;
-use Data::Dumper;
-
-my $edge_thresh = 1;
 
 my $filename = @ARGV > 0 ? shift : dirname($0).'/'."fruits.jpg";
 my $image = Cv->LoadImage($filename, CV_LOAD_IMAGE_COLOR) or 
@@ -15,15 +13,14 @@ my $image = Cv->LoadImage($filename, CV_LOAD_IMAGE_COLOR) or
 
 # Convert to grayscale
 my $gray = $image->CvtColor(CV_BGR2GRAY);
-my $edge = Cv->CreateImage([$image->width, $image->height], IPL_DEPTH_8U, 1);
+my $edge = Cv::Image->new($image->sizes, Cv::MAKETYPE(CV_8U, 1));
 
 # Create the output image
-my $cedge = Cv->CreateImage([$image->width, $image->height], IPL_DEPTH_8U, 3);
+my $cedge = Cv::Image->new($image->sizes, Cv::MAKETYPE(CV_8U, 3));
 
 # Create a window
-my $win = Cv->NamedWindow("Edge")
-	->CreateTrackbar( -name => "Threshold", -value => \$edge_thresh,
-					  -count => 100, -callback => \&on_trackbar);
+Cv->NamedWindow("Edge");
+Cv->CreateTrackbar("Edge", "Threshold", my $edge_thresh = 1, 100, \&on_trackbar);
 
 # Show the image
 &on_trackbar;
@@ -31,21 +28,17 @@ my $win = Cv->NamedWindow("Edge")
 # Wait for a key stroke; the same function arranges events processing
 Cv->WaitKey;
 
-
 # define a trackbar callback
 sub on_trackbar {
 
-	# XXXXX
-    $edge = $gray->Smooth( -smoothtype => CV_BLUR, -size1 => 3, -size2 => 3 );
-    $edge = $gray->Not;
+    $edge = $gray->Smooth(CV_BLUR, 3, 3);
 
     # Run the edge detector on grayscale
-    $edge = $gray->Canny( -threshold1 => $edge_thresh,
-						  -threshold2 => $edge_thresh*3 );
+    $edge = $gray->Canny($edge_thresh, $edge_thresh*3);
 
     # copy edge points
     $cedge->Zero;
-    $image->Copy( -dst => $cedge, -mask => $edge );
+    $image->Copy($cedge, $edge);
 
     $cedge->ShowImage("Edge");
 }

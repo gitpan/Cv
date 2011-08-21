@@ -14,120 +14,78 @@ use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
 
-my $img = Cv->new(
-    -size => scalar cvSize(500, 500), -depth => 8, -channels => 3,
-    );
-
-my $kalman = Cv->CreateKalman(
-    -dynam_params => 2, -measure_params => 1, -control_params => 0,
-	);
-
-my $state         = Cv->CreateMat(-rows => 2, -cols => 1, -type => CV_32FC1);
-my $process_noise = Cv->CreateMat(-rows => 2, -cols => 1, -type => CV_32FC1);
-my $measurement   = Cv->CreateMat(-rows => 1, -cols => 1, -type => CV_32FC1)
-	->Zero;
-
+my $img = Cv::Image->new([ 500, 500 ], CV_8UC3);
+my $kalman = Cv::Kalman->new(2, 1, 0);
+my $state = Cv::Mat->new([ 2, 1 ], CV_32FC1);
+my $process_noise = Cv::Mat->new([ 2, 1 ], CV_32FC1);
+my $measurement = Cv::Mat->new([ 1, 1 ], CV_32FC1);
 my $rng = Cv->RNG;
 my $code = -1;
 
-Cv->NamedWindow(-name => "Kalman", -flags => 1);
+$measurement->zero;
+Cv->namedWindow("Kalman", 1);
 
 while (1) {
-    $rng->RandArr(-arr => $state,
-				  -dist_type => CV_RAND_NORMAL,
-				  -param1 => scalar cvRealScalar(0),
-				  -param2 => scalar cvRealScalar(0.1),
-		);
+    $rng->randArr($state, CV_RAND_NORMAL, cvRealScalar(0), cvRealScalar(0.1));
+	$kalman->transition_matrix
+		->setReal([0, 0], 1)->setReal([0, 1], 1)
+		->setReal([1, 0], 0)->setReal([1, 1], 1);
+	$kalman->measurement_matrix->setIdentity(cvRealScalar(1));
+	$kalman->process_noise_cov->setIdentity(cvRealScalar(1e-5));
+	$kalman->measurement_noise_cov->setIdentity(cvRealScalar(1e-1));
+	$kalman->error_cov_post->SetIdentity(cvRealScalar(1));
 
-	my @A = ( 1, 1, 0, 1 );
-	$kalman->transition_matrix		->SetReal1D($_, $A[$_]) for (0 .. $#A);
-	$kalman->measurement_matrix		->SetIdentity(scalar cvRealScalar(1));
-	$kalman->process_noise_cov		->SetIdentity(scalar cvRealScalar(1e-5));
-	$kalman->measurement_noise_cov	->SetIdentity(scalar cvRealScalar(1e-1));
-	$kalman->error_cov_post			->SetIdentity(scalar cvRealScalar(1));
-
-	$rng->RandArr(-arr => $kalman->state_post,
-				  -dist_type => CV_RAND_NORMAL,
-				  -param1 => scalar cvRealScalar(0),
-				  -param2 => scalar cvRealScalar(0.1),
-	);
+	$rng->randArr($kalman->state_post, CV_RAND_NORMAL,
+				  cvScalarAll(0), cvScalarAll(0.1));
 
     while (1) {
-		my $state_pt = &calc_point($state->GetReal1D(0));
+		sub calcPoint {
+			my ($angle) = @_;
+			[ $img->width  / 2 + cos($angle) * $img->width  / 3,
+			  $img->height / 2 - sin($angle) * $img->height / 3,
+			];
+		}
 
-		my $prediction = $kalman->Predict(-control => \0);
-		my $predict_pt = &calc_point($prediction->GetReal1D(0));
+		my $state_pt = &calcPoint($state->getReal(0));
+		my $prediction = $kalman->predict(\0);
+		my $predict_pt = &calcPoint($prediction->getReal(0));
 
-		my $MNCovariance = $kalman->measurement_noise_cov->GetReal1D(0);
-		$rng->RandArr(-arr => $measurement,
-					  -dist_type => CV_RAND_NORMAL,
-					  -param1 => scalar cvRealScalar(0),
-					  -param2 => scalar cvRealScalar(sqrt($MNCovariance)),
-			);
+		$rng->randArr($measurement, CV_RAND_NORMAL, cvRealScalar(0),
+			cvRealScalar(sqrt($kalman->measurement_noise_cov->getReal(0))));
 
 		# generate measurement
-		Cv->MatMulAdd(-src1 => $kalman->measurement_matrix,
-					  -src2 => $state, -src3 => $measurement,
-					  -dst => $measurement,
-			);
+		$kalman->measurement_matrix
+			->matMulAdd($state, $measurement, $measurement);
 
-		my $measurement_pt = &calc_point($measurement->GetReal1D(0));
+		my $measurement_pt = &calcPoint($measurement->getReal(0));
 
 		# plot points
-		$img->Zero;
-		&draw_cross($state_pt,       CV_RGB(255, 255, 255), 3);
-		&draw_cross($measurement_pt, CV_RGB(255,   0,   0), 3);
-		&draw_cross($predict_pt,     CV_RGB(  0, 255,   0), 3);
-		$img->Line(-pt1 => $state_pt, -pt2 => $measurement_pt,
-				   -color => CV_RGB(255, 0, 0), -thickness => 3,
-				   -line_type => CV_AA, -shift => 0,
-			);
-		$img->Line(-pt1 => $state_pt, -pt2 => $predict_pt,
-				   -color => CV_RGB(255, 255, 0), -thickness => 3,
-				   -line_type => CV_AA, -shift => 0,
-			);
-		$kalman->Correct(-measurement => $measurement);
-		my $PNCovariance = $kalman->process_noise_cov->GetReal1D(0);
-		$rng->RandArr(-arr => $process_noise,
-					  -dist_type => CV_RAND_NORMAL,
-					  -param1 => scalar cvRealScalar(0),
-					  -param2 => scalar cvRealScalar(sqrt($PNCovariance)),
-			);
-		Cv->MatMulAdd(-src1 => $kalman->transition_matrix,
-					  -src2 => $state, -src3 => $process_noise,
-					  -dst => $state,
-			);
+		sub drawCross {
+			my ($center, $color, $d) = @_;
+			my ($x, $y) = @$center;
+			$img->line([ $x - $d, $y - $d ],
+					   [ $x + $d, $y + $d ], $color, 1, CV_AA, 0);
+			$img->line([ $x + $d, $y - $d ],
+					   [ $x - $d, $y + $d ], $color, 1, CV_AA, 0);
+		}
 
-		$img->ShowImage(-name => "Kalman");
-		$code = Cv->WaitKey(100);
+		$img->zero;
+		&drawCross($state_pt, CV_RGB(255, 255, 255), 3);
+		&drawCross($measurement_pt, CV_RGB(255, 0, 0), 3);
+		&drawCross($predict_pt, CV_RGB(0, 255, 0), 3);
+		$img->line($state_pt, $measurement_pt, CV_RGB(255, 0, 0), 3, CV_AA, 0);
+		$img->line($state_pt, $predict_pt, CV_RGB(255, 255, 0), 3, CV_AA, 0);
+
+		$kalman->correct($measurement);
+		$rng->randArr($process_noise, CV_RAND_NORMAL, cvRealScalar(0),
+					  cvRealScalar(sqrt($kalman->process_noise_cov->getReal(0))));
+		$kalman->transition_matrix->matMulAdd($state, $process_noise, $state);
+
+		$img->showImage("Kalman");
+		$code = Cv->waitKey(100);
 		$code &= 0x7f if ($code > 0);
 		last if ($code > 0);
 	}
 
 	last if ($code == 27 || $code == ord('q') || $code == ord('Q'));
-}
-
-
-sub calc_point {
-    my $angle = shift;
-    cvPoint(
-		-x => $img->width/2 + $img->width/3*cos($angle),
-		-y => $img->height/2 - $img->width/3*sin($angle),
-	);
-}
-
-
-sub draw_cross {
-    my ($center, $color, $d) = @_;
-	my ($x, $y) = cvPoint($center);
-    $img->Line(
-		-pt1 => scalar cvPoint($x - $d, $y - $d),
-		-pt2 => scalar cvPoint($x + $d, $y + $d),
-		-color => $color, -thickness => 1, -line_type => CV_AA, -shift => 0,
-	);
-    $img->Line(
-		-pt1 => scalar cvPoint($x + $d, $y - $d),
-		-pt2 => scalar cvPoint($x - $d, $y + $d),
-		-color => $color, -thickness => 1, -line_type => CV_AA, -shift => 0,
-	);
 }

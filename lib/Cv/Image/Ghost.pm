@@ -2,15 +2,15 @@
 
 package Cv::Image::Ghost;
 
-use 5.008000;
+use 5.008008;
 use strict;
 use warnings;
 
 use Cv::Image;
-
 our @ISA = qw(Cv::Image);
 
 sub DESTROY {
 }
 
 1;
+__END__

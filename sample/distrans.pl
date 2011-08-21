@@ -3,7 +3,7 @@
 
 use lib qw(blib/lib blib/arch);
 use strict;
-use Cv qw(:all);
+use Cv;
 use File::Basename;
 use Time::HiRes qw(gettimeofday);
 use Data::Dumper;
@@ -23,12 +23,12 @@ print "Hot keys: \n",
 	"\tv - switch Voronoi diagram mode on/off\n",
 	"\tSPACE - loop through all the modes\n";
 
-my $dist = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32F, 1 );
+my $dist = Cv::Image->new($gray->sizes, CV_32FC1);
 my $dist8u1 = $gray->new;
 my $dist8u2 = $gray->new;
-my $dist8u = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_8U, 3 );
-my $dist32s = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32S, 1 );
-my $labels = Cv->CreateImage( scalar $gray->GetSize, IPL_DEPTH_32S, 1 );
+my $dist8u = Cv::Image->new($gray->sizes, CV_8UC3);
+my $dist32s = Cv::Image->new($gray->sizes, CV_32SC1);
+my $labels = Cv::Image->new($gray->sizes, CV_32SC1);
 
 my $build_voronoi = 0;
 my $mask_size = CV_DIST_MASK_5;
@@ -36,11 +36,9 @@ my $dist_type = CV_DIST_L1;
 my $edge_thresh = 100;
 
 my $wndname = "Distance transform";
-my $win = Cv->NamedWindow( $wndname, 1 )
-	->CreateTrackbar( -name => "Threshold", 
-					  -value => \$edge_thresh,
-					  -count => 255,
-					  -callback => \&on_trackbar );
+Cv->NamedWindow($wndname, 1);
+Cv->CreateTrackbar(
+	"Threshold", $wndname, $edge_thresh, 255, \&on_trackbar);
 
 for (;;) {
 	# Call to update the view
@@ -51,34 +49,34 @@ for (;;) {
 	last if ($c == 27);
 
 	my $key = chr($c);
-	if( $key eq 'c' || $key eq 'C' ) {
+	if ($key eq 'c' || $key eq 'C') {
 		$dist_type = CV_DIST_C;
-	} elsif ( $key eq '1' ) {
+	} elsif ($key eq '1') {
 		$dist_type = CV_DIST_L1;
-	} elsif ( $key eq '2' ) {
+	} elsif ($key eq '2') {
 		$dist_type = CV_DIST_L2;
-	} elsif ( $key eq '3' ) {
+	} elsif ($key eq '3') {
 		$mask_size = CV_DIST_MASK_3;
-	} elsif ( $key eq '5' ) {
+	} elsif ($key eq '5') {
 		$mask_size = CV_DIST_MASK_5;
-	} elsif ( $key eq '0' ) {
+	} elsif ($key eq '0') {
 		$mask_size = CV_DIST_MASK_PRECISE;
-	} elsif ( $key eq 'v' ) {
+	} elsif ($key eq 'v') {
 		$build_voronoi ^= 1;
-	} elsif ( $key eq ' ' ) {
-		if ( $build_voronoi ) {
+	} elsif ($key eq ' ') {
+		if ($build_voronoi) {
 			$build_voronoi = 0;
 			$mask_size = CV_DIST_MASK_3;
 			$dist_type = CV_DIST_C;
-		} elsif ( $dist_type == CV_DIST_C ) {
+		} elsif ($dist_type == CV_DIST_C) {
 			$dist_type = CV_DIST_L1;
-		} elsif ( $dist_type == CV_DIST_L1 ) {
+		} elsif ($dist_type == CV_DIST_L1) {
 			$dist_type = CV_DIST_L2;
-		} elsif ( $mask_size == CV_DIST_MASK_3 ) {
+		} elsif ($mask_size == CV_DIST_MASK_3) {
 			$mask_size = CV_DIST_MASK_5;
-		} elsif ( $mask_size == CV_DIST_MASK_5 ) {
+		} elsif ($mask_size == CV_DIST_MASK_5) {
 			$mask_size = CV_DIST_MASK_PRECISE;
-		} elsif ( $mask_size == CV_DIST_MASK_PRECISE ) {
+		} elsif ($mask_size == CV_DIST_MASK_PRECISE) {
 			$build_voronoi = 1;
 		}
 	}
@@ -88,84 +86,34 @@ exit;
 
 # threshold trackbar callback
 sub on_trackbar {
-    my $msize = $mask_size;
-    my $_dist_type = $build_voronoi ? CV_DIST_L2 : $dist_type;
-    my $edge = $gray->Threshold(-threshold => $edge_thresh,
-								-max_value => $edge_thresh,
-								-threshold_type => CV_THRESH_BINARY);
-    $msize = CV_DIST_MASK_5 if ($build_voronoi);
-    if ($_dist_type == CV_DIST_L1) {
-		$edge->DistTransform(-dst => $dist,
-							 -distance_type => $_dist_type,
-							 -mask_size => $msize);
-    } else {
-		$edge->DistTransform(-dst => $dist,
-							 -distance_type => $_dist_type,
-							 -mask_size => $msize,
-							 -labels => $build_voronoi ? $labels : \0);
-	}
-    unless ($build_voronoi) {
+    my $edge = $gray->Threshold($edge_thresh, $edge_thresh, CV_THRESH_BINARY);
+	if ($build_voronoi) {
+		$edge->DistTransform($dist, CV_DIST_L2, CV_DIST_MASK_5, \0, $labels);
+		&dovoronoi($labels, $dist, $dist8u);
+	} else {
+		$edge->DistTransform($dist, $dist_type, $mask_size);
         # begin "painting" the distance transform result
-        $dist->ConvertScale(-scale =>  5000, -shift => 0)->Pow(0.5)
-			->ConvertScale(-scale => 1.0, -shift => 0.5, -dst => $dist32s);
-
-        $dist32s->AndS(-value => scalar cvScalarAll(255), -dst => $dist32s)
-			->ConvertScale(-scale => 1, -shift => 0, -dst => $dist8u1);
-
-		$dist32s->ConvertScale(-scale => -1, -shift => 0, -dst => $dist32s)
-			->AddS(-value => scalar cvScalarAll(255), -dst => $dist32s)
-			->ConvertScale(-scale => 1, -shift => 0, -dst => $dist8u2);
-
-        $dist8u->Merge(-src0 => $dist8u1, -src1 => $dist8u2, -src2 => $dist8u2);
+        $dist->ConvertScale(5000, 0)->Pow(0.5)
+			->ConvertScale($dist32s, 1.0, 0.5);
+        $dist32s->And(cvScalarAll(255), $dist32s)
+			->ConvertScale($dist8u1, 1, 0);
+		$dist32s->ConvertScale($dist32s, -1, 0)
+			->Add(cvScalarAll(255), $dist32s)
+			->ConvertScale($dist8u2, 1, 0);
+        Cv->Merge([$dist8u1, $dist8u2, $dist8u2], $dist8u);
         # end "painting" the distance transform result
-    } else {
-		my $use_inline_c = 0;
-		my $show_etime = 0;
-		my $t0 = gettimeofday;
-		if ($use_inline_c) {
-			# 0.03s
-			&dovoronoi($labels, $dist, $dist8u);
-		} else {
-			# 18s
-			my @colors = ( [   0,   0,   0 ],
-						   [ 255,   0,   0 ],
-						   [ 255, 128,   0 ],
-						   [ 255, 255,   0 ],
-						   [   0, 255,   0 ],
-						   [   0, 128, 255 ],
-						   [   0, 255, 255 ],
-						   [   0,   0, 255 ],
-						   [ 255,   0, 255 ],
-				);
-			foreach my $y (0 .. $labels->height - 1) {
-				my @ll = $labels->PtrD([$y, 0]);
-				my @dd = $dist->PtrD([$y, 0]);
-				foreach my $x (0 .. $labels->width - 1) {
-					my $idx = $ll[$x] == 0 || $dd[$x] == 0 ?
-						0 : ($ll[$x] - 1) % 8 + 1;
-					#$dist8u->SetD(-idx => [$y, $x], -value => $colors[$idx]);
-					cvSet2D($dist8u, $y, $x, pack("d4", @{$colors[$idx]}));
-				}
-			}
-			my $font = Cv->InitFont(CV_FONT_HERSHEY_PLAIN);
-			$font->PutText(
-				-img => $dist8u, -org => [ 20, 20 ], -overstrike => 1,
-				-text => "Try '\$use_inline_c = 1' if you feel slow.");
-		}
-		my $t1 = gettimeofday;
-		print $t1 - $t0, "\n" if ($show_etime);
     }
-    $win->ShowImage($dist8u);
+    $dist8u->ShowImage($wndname);
 }
 
 
-use Inline C => Config => CCFLAGS => '-I/usr/local/include';
-use Inline C => Config => TYPEMAPS => "$ENV{HOME}/Cv/typemap";
-use Inline C => <<'----';
+use Cv::Config;
+use Inline C => Config => %Cv::Config::C;
+use Inline C => << '----';
 #include <opencv/cv.h>
-#include <opencv/highgui.h>
+#include "typemap.h"
 
-void dovoronoi(IplImage *labels, IplImage *dist, IplImage *dist8u)
+void dovoronoi(IplImage* labels, IplImage* dist, IplImage* dist8u)
 {
     static const uchar colors[][3] = {
         {   0,   0,   0 },

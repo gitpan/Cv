@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 # The full "Square Detector" program.  It loads several images
 # subsequentally and tries to find squares in each image
@@ -17,184 +18,175 @@ my $wndname = "Square Detection Demo";
 # pt0->pt1 and from pt0->pt2
 
 sub angle {
-    my ($pt1, $pt2, $pt0) = @_;
+	my ($pt1, $pt2, $pt0) = @_;
 
-    my $dx1 = $pt1->[0] - $pt0->[0];
-    my $dy1 = $pt1->[1] - $pt0->[1];
-    my $dx2 = $pt2->[0] - $pt0->[0];
-    my $dy2 = $pt2->[1] - $pt0->[1];
+	my $dx1 = $pt1->[0] - $pt0->[0];
+	my $dy1 = $pt1->[1] - $pt0->[1];
+	my $dx2 = $pt2->[0] - $pt0->[0];
+	my $dy2 = $pt2->[1] - $pt0->[1];
 
     ($dx1*$dx2 + $dy1*$dy2) /
-	sqrt(($dx1*$dx1 + $dy1*$dy1)*($dx2*$dx2 + $dy2*$dy2) + 1e-10);
+		sqrt(($dx1*$dx1 + $dy1*$dy1)*($dx2*$dx2 + $dy2*$dy2) + 1e-10);
 }
 
 
 # create memory storage that will contain all the dynamic data
-my $storage = Cv->CreateMemStorage(0);
+my $storage = Cv::MemStorage->new(0);
 
 # returns sequence of squares detected on the image.  the sequence is
 # stored in the specified memory storage
 
 sub findSquares4 {
-    my $img = shift;
+	my $img = shift;
 
-    my $N = 11;
+	my $N = 11;
 
-    # create empty sequence that will contain points - 4 points per
-    # square (the square's vertices)
+	# create empty sequence that will contain points - 4 points per
+	# square (the square's vertices)
 
-    my @squares = ();
+	my @squares = ();
 
-    # select the maximum ROI in the image with the width and height
-    # divisible by 2
+	# select the maximum ROI in the image with the width and height
+	# divisible by 2
 
-    my $sz = [ $img->width & -2, $img->height & -2 ];
-    my $timg = $img->CloneImage # make a copy of input image
-	->SetImageROI([ 0, 0, @$sz ]);
+	my $sz = [ $img->width & -2, $img->height & -2 ];
+	(my $timg = $img->clone) # make a copy of input image
+		->roi([ 0, 0, @$sz ]);
 
-    # down-scale and upscale the image to filter out the noise
-    $timg = $timg->PyrDown(7)->PyrUp(7);
+	# down-scale and upscale the image to filter out the noise
+	# $timg = $timg->pyrDown(7)->pyrUp(7);
+	$timg->pyrDown(7)->pyrUp($timg, 7);
 
-    # find squares in every color plane of the image
-    foreach my $c (1 .. 3) {
+	# find squares in every color plane of the image
+	foreach my $c (1 .. 3) {
 
-        # extract the c-th color plane
-	my $tgray = $timg->SetImageCOI($c)
-	    ->Copy(-dst => Cv->CreateImage($sz, 8, 1));
-        
-        # try several threshold levels
-        foreach my $l (0 .. $N - 1) {
-            # hack: use Canny instead of zero threshold level.
-            # Canny helps to catch squares with gradient shading   
+		# extract the c-th color plane
+		$timg->coi($c);
+		my $tgray = $timg->copy($timg->new($timg->sizes, CV_8UC1));
 
-	    my $gray;
+		# try several threshold levels
+		foreach my $l (0 .. $N - 1) {
+			# hack: use Canny instead of zero threshold level.
+			# Canny helps to catch squares with gradient shading   
 
-            if ($l == 0) {
-                # apply Canny. Take the upper threshold from slider
-                # and set the lower to 0 (which forces edges merging)
+			my $gray;
 
-                $gray = $tgray->Canny(
-		    -threshold1 => 0, -threshold2 => $thresh,
-		    -aperture_size => 5)
+			if ($l == 0) {
+				# apply Canny. Take the upper threshold from slider
+				# and set the lower to 0 (which forces edges merging)
 
-		    # dilate canny output to remove potential holes
-		    # between edge segments
+				$gray = $tgray->canny(0, $thresh, 5)
 
-		    ->Dilate;
+					# dilate canny output to remove potential holes
+					# between edge segments
 
-            } else {
-                # apply threshold if l!=0:
-                #   tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
+					->dilate;
 
-                $gray = $tgray->Threshold(
-		    -threshold => ($l + 1)*255/$N, -max_value => 255,
-		    -threshold_type => &CV_THRESH_BINARY);
+			} else {
+				# apply threshold if l!=0:
+				#   tgray(x,y) = gray(x,y) < (l+1)*255/N ? 255 : 0
+
+				$tgray->threshold(
+					$gray = $tgray->new, ($l + 1)*255/$N, 255,
+					CV_THRESH_BINARY);
             }
 
-            # find contours and store them all as a list
-	    next unless my $contour = Cv->FindContours(
-		-image => $gray, -storage => $storage,
-		-mode => &CV_RETR_LIST,
-		-method => &CV_CHAIN_APPROX_SIMPLE);
+			# find contours and store them all as a list
+			$gray->findContours($storage, my $contour);
+			next unless $contour;
 
-            # test each contour
-	    while ($contour) {
+			# test each contour
+			while ($contour) {
 
-		# approximate contour with accuracy proportional to
-                # the contour perimeter
+				# approximate contour with accuracy proportional to
+				# the contour perimeter
 
-                my $result = $contour->ApproxPoly(
-		    -method => &CV_POLY_APPROX_DP,
-		    -parameter => $contour->ContourPerimeter * 0.02,
-		    );
+				my $result = $contour->approxPoly(
+					$contour->header_size, $storage, CV_POLY_APPROX_DP,
+					$contour->contourPerimeter * 0.02,
+					);
+				
+				# square contours should have 4 vertices after
+				# approximation relatively large area (to filter out
+				# noisy contours) and be convex.
 
-                # square contours should have 4 vertices after
-		# approximation relatively large area (to filter out
-		# noisy contours) and be convex.
+				# Note: absolute value of an area is used because area
+				# may be positive or negative - in accordance with the
+				# contour orientation
 
-                # Note: absolute value of an area is used because area
-                # may be positive or negative - in accordance with the
-                # contour orientation
+				if ($result->total == 4 &&
+					abs($result->contourArea) > 1000 &&
+					$result->checkContourConvexity) {
 
-                if ($result->total == 4 &&
-                    abs($result->ContourArea) > 1000 &&
-                    $result->CheckContourConvexity) {
-		    
-                    my $s = 0;
+					my $s = 0;
 
-                    foreach my $i (2 .. 4) {
+					foreach my $i (2 .. 4) {
 
-                        # find minimum angle between joint edges
-                        # (maximum of cosine)
+						# find minimum angle between joint edges
+						# (maximum of cosine)
 
-			my $t = abs(
-			    angle(
-				map {
-				    scalar $result->GetSeqElem($_)
-				} ($i, $i - 2, $i - 1)
-			    ));
-			$s = $s > $t ? $s : $t;
+						my $t = abs(
+							angle(
+								map {
+									$result->getPoint($_)
+								} ($i, $i - 2, $i - 1)
+							));
+						$s = $s > $t ? $s : $t;
                     }
 
-                    # if cosines of all angles are small (all angles
-                    # are ~90 degree) then write quandrange vertices
-                    # to resultant sequence
+					# if cosines of all angles are small (all angles
+					# are ~90 degree) then write quandrange vertices
+					# to resultant sequence
 
-                    if ($s < 0.3) {
-			push(@squares, [
-				 map {
-				     scalar $result->GetSeqElem($_)
-				 } (0..3)
-			     ]);
-		    }
+					if ($s < 0.3) {
+						push(@squares, [
+								 map {
+									 $result->getPoint($_)
+								 } (0..3)
+							 ]);
+					}
                 }
-                    
-                # take the next contour
-		$contour = $contour->h_next;
-	    }
+				
+				# take the next contour
+				$contour = $contour->h_next;
+			}
         }
     }
 
-    @squares;
+	@squares;
 }
 
 
 
 my @names = ("pic1.png", "pic2.png", "pic3.png",
-	     "pic4.png", "pic5.png", "pic6.png");
+			 "pic4.png", "pic5.png", "pic6.png");
 
 foreach my $name (@names) {
-    # load i-th image
-    my $img0 = Cv->LoadImage(dirname($0).'/'.$name, 1);
-    unless ($img0) {
-	print "Couldn't load $name\n";
-	next;
+	# load i-th image
+	my $img0 = Cv->loadImage(dirname($0) . "/$name", 1);
+	unless ($img0) {
+		print "Couldn't load $name\n";
+		next;
     }
 
-    my $img = $img0->CloneImage;
+	my $img = $img0->clone;
 
-    # create window and a trackbar (slider) with parent "image" and
-    # set callback (the slider regulates upper threshold, passed to
-    # Canny edge detector)
+	use Time::HiRes qw(gettimeofday);
+	my $t0 = gettimeofday;
 
-    Cv->NamedWindow($wndname, 1);
+	# find and draw the squares
+    my $cpy = $img->clone;
+	$cpy->polyLine([&findSquares4($img)], -1, [ 0, 255, 0 ], 3);
 
-    # find and draw the squares
-    my $cpy = $img->CloneImage;
-    foreach (&findSquares4($img)) {
-	foreach ([ $_->[0], $_->[1] ], [ $_->[1], $_->[2] ],
-		 [ $_->[2], $_->[3] ], [ $_->[3], $_->[0] ]) {
-	    $cpy->Line(-pt1 => $_->[0], -pt2 => $_->[1],
-		       -color => [ 0, 255, 0 ], -thickness => 3,
-		);
-	}
-    }
-    $cpy->ShowImage($wndname);
-        
+	my $t1 = gettimeofday;
+	print STDERR "time = ", $t1 - $t0, "\n";
+
+    $cpy->show($wndname);
+	
     # wait for key.  Also the function cvWaitKey takes care of event
     # processing
-    my $c = Cv->WaitKey(0);
-    last if (($c & 0xff) == 27);
+	my $c = Cv->waitKey(0);
+    last if ($c > 0 && ($c & 0xff) == 27);
 }
 
 exit 0;

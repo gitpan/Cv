@@ -3,56 +3,24 @@
 
 use strict;
 use lib qw(blib/lib blib/arch);
+
 use Cv;
 use File::Basename;
-use Data::Dumper;
 
-# The short example shows how to use new-style image classes declared
-# in cxcore.hpp.  There is also a very similar matrix class (CvMatrix)
-# - a wrapper for CvMat
+my $imagename = shift || dirname($0) . "/lena.jpg";
+my $img = Cv->loadImage($imagename);
 
-# load image in constructor: the image can be loaded either from
-# bitmap (see cvLoadImage), or from XML/YAML (see cvLoad)
+# check if the image has been loaded properly
+die "$0: Can not load image $imagename" unless $img;
 
-my $img = Cv->load(
-    -filename => @ARGV > 0 ? shift : dirname($0).'/'."lena.jpg",
-    -flags => CV_LOAD_IMAGE_COLOR);
-die "$0: can't load\n" unless $img; # check if the image has been loaded properly
-my $rng = Cv->RNG;
+my $rng = Cv::RNG->new(-1);
+my $noise = Cv::Image->new($img->sizes, CV_32FC1);
+$rng->randArr($noise, CV_RAND_NORMAL, cvScalarAll(0), cvScalarAll(20));
+$noise->smooth($noise, CV_GAUSSIAN, 5, 5, 1, 1);
 
-# clone the image (although, later the content will be replaced with
-# cvCvtColor, clone() is used for simplicity and for the illustration)
-my $img_yuv = $img->clone;
-
-# simply call OpenCV functions and pass the class instances there
-Cv->CvtColor(-src => $img, -dst => $img_yuv, -code => CV_BGR2YCrCb);
-
-# we can do it more easily. 
-# my $img_yuv = $img->CvtColor(-code => CV_BGR2YCrCb);
-
-# another method to create an image - from scratch
-my $y = $img->new(-depth => IPL_DEPTH_8U, -channels => 1);
-$img_yuv->Split(-dst0 => $y);
-my $noise = $img->new(-depth => IPL_DEPTH_32F, -channels => 1);
-
-$rng->RandArr(-arr => $noise,
-			  -dist_type => CV_RAND_NORMAL,
-			  -param1 => scalar cvScalarAll(0),
-			  -param2 => scalar cvScalarAll(20))
-	->Smooth(-dst => $noise,
-			 -smoothtype => CV_GAUSSIAN,
-			 -size1 => 5, -size2 => 5,
-			 -sigma1 => 1, -sigma2 => 1)
-	->Acc(-image => $y)
-	->Convert(-dst => $y);
-
-$img_yuv->Merge(-src0 => $y)
-	->CvtColor(-dst => $img, -code => CV_YCrCb2BGR);
-
-# show method is the conveninient form of cvShowImage
-$img->NamedWindow(-name => "image with grain", -flags => CV_WINDOW_AUTOSIZE)
-	->show->WaitKey;
-
-# all the images will be released automatically
-
-exit 0;
+# convert image to YUV color space. The output image will be created
+# automatically, and split the image into separate color planes
+my ($y, $u, $v) = $img->cvtColor(CV_BGR2YCrCb)->split;
+$y->acc($noise)->convert($y);
+Cv->merge($y, $u, $v)->cvtColor(CV_YCrCb2BGR)->show($imagename);
+Cv->waitKey();

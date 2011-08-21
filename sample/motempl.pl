@@ -1,22 +1,9 @@
 #!/usr/bin/perl
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
+use strict;
 use lib qw(blib/lib blib/arch);
-use strict;
-
-my $m = Motempl->new;
-if (@ARGV == 0) {
-	$m->motempl(0);
-} else {
-	$m->motempl($_) for @ARGV;
-}
-
-
-package Motempl;
-
-use strict;
 use Cv;
-use List::Util qw(min max);
 use Time::HiRes qw(gettimeofday);
 use Data::Dumper;
 
@@ -30,185 +17,143 @@ use constant {
 	MIN_TIME_DELTA => MHI_DURATION * 0.05,
 };
 
-sub new {
-	my $class = shift;
-	my $self = bless {}, $class;
+# number of cyclic frame buffer used for motion detection
+# (should, probably, depend on FPS)
+use constant {
+	N => 4,
+};
 
-	$self->{window} = Cv->NamedWindow("Motion", 1);
-	$self;
-}
+my $diff_threshold = 30;
 
-sub motempl {
-	my $self = shift;
-	my $argv = shift;
-	my $capture = $argv =~ /^\d$/ ?
-		Cv->CreateCameraCapture($argv) : Cv->CreateFileCapture($argv);
-	die "$0: Could not initialize capturing...\n" unless $capture;
+my $start;
+my $lastgray;
 
-	$self->{fps} = 30;
-	$self->{ts} = 0;
-	$self->{lastts} = 0;
+# temporary images
+my $mhi;						# MHI
+my $orient;						# orientation
+my $mask;						# valid orientation mask
+my $segmask;					# motion segmentation map
+my $storage;					# temporary storage
 
-	delete $self->{motion};
-	delete $self->{mask};
-	delete $self->{mhi};
-	delete $self->{orient};
-	delete $self->{segmask};
-	delete $self->{lastgray};
-
-	while (my $image = $capture->QueryFrame) {
-		#$image->ShowImage('Source');
-		#$self->{ts} = &gettimeofday; # get current time in seconds
-		$self->{ts} += 1/$self->{fps}; # get current time in seconds
-		my $gray = $image->CvtColor(CV_BGR2GRAY); # convert frame to grayscale
-		if ($self->{lastgray}) {
-			next if $self->similar($gray, $self->{lastgray});
-			my $motion = $self->update_mhi($gray, 30);
-			$motion->ShowImage("Motion");
-		}
-		$self->{lastgray} = $gray;
-		my $c =  $self->waitkey;
-		next if $c < 0;
-		exit(0) if ($c & 0x7f) == 27 || ($c & 0x7f) == ord('q');
-		last if ($c & 0x7f) == ord('n');
-	}
-}
-
-
+# parameters:
+#   img - input video frame
+#   dst - resultant motion picture
 sub update_mhi {
-	my $self = shift;
-    my $gray = shift;			# input video frame
-    my $diff_threshold = shift;
+	my ($img, $dst) = @_;
+	unless ($start) {
+		$start = gettimeofday;
+	}
+    my $timestamp = gettimeofday - $start; # get current time in seconds
+    my $size = cvSize($img->width, $img->height); # get current frame size
+	my $gray = $img->CvtColor(CV_BGR2GRAY); # convert frame to grayscale
 
-	# resultant motion picture
-	my $dst     = $self->{motion}  ||= $gray->new(-channels => 3)->Zero;
+	unless ($lastgray) {
+		$lastgray = $gray;
+	}
 
-	# temporary images
-	my $mask    = $self->{mask}    ||= $gray->new;
-	my $mhi     = $self->{mhi}     ||= $gray->new(-depth => IPL_DEPTH_32F)->Zero;
-	my $orient  = $self->{orient}  ||= $mhi->new;
-	my $segmask = $self->{segmask} ||= $mhi->new;
+	unless ($mhi) {
+		# temporary images
+		$mhi = $gray->new($gray->sizes, CV_32FC1)->Zero;
+		$mask = $gray->new;
+		$orient = $mhi->new;
+		$segmask = $mhi->new;
+	}
 
 	# get difference between frames and threshold it
-	my $binary = $gray->AbsDiff($self->{lastgray}, $gray->new)
-		->Threshold(-threshold => $diff_threshold, -max_value => 1)
-		->UpdateMotionHistory(-mhi => $mhi, -timestamp => $self->{ts},
-							  -duration => MHI_DURATION);
+	my $binary = $gray->AbsDiff($lastgray, $gray->new)
+		->Threshold($diff_threshold, 1, CV_THRESH_BINARY);
+	$binary->UpdateMotionHistory($mhi, $timestamp, MHI_DURATION);
+	
+	# convert MHI to blue 8u image
+	$mhi->CvtScale($mask, 255/MHI_DURATION,
+				   (MHI_DURATION - $timestamp)*255/MHI_DURATION);
+	$dst->Zero;
+	Cv->Merge([$mask], $dst);
 
-    # convert MHI to blue 8u image
-	$mhi->ConvertScale(
-		-dst => $mask, -scale => 255/MHI_DURATION,
-		-shift => (MHI_DURATION - $self->{ts})*255/MHI_DURATION);
+	# calculate motion gradient orientation and valid orientation mask
+	$mhi->CalcMotionGradient(
+		$mask, $orient, MAX_TIME_DELTA, MIN_TIME_DELTA, 3);
 
-    $dst->Zero;
-    $dst->Merge($mask);
+	unless ($storage) {
+		$storage = Cv::MemStorage->new;
+	} else {
+		$storage->ClearMemStorage;
+	}
 
-    # calculate motion gradient orientation and valid orientation mask
-    $mhi->CalcMotionGradient(
-		-mask => $mask, -orientation => $orient,
-		-delta1 => MAX_TIME_DELTA, -delta2 => MIN_TIME_DELTA,
-		-aperture_size => 3);
+	# segment motion: get sequence of motion components segmask is
+	# marked motion components map. It is not used further
+	my $seq = $mhi->SegmentMotion(
+		$segmask, $storage, $timestamp, MAX_TIME_DELTA);
 
-	my $storage = Cv->CreateMemStorage(0);
-
-    # segment motion: get sequence of motion components segmask is
-    # marked motion components map. It is not used further
-	my $seq = Cv->SegmentMotion(
-		-mhi => $mhi, 
-		-seg_mask => $segmask,
-		-timestamp => $self->{ts},
-		-seg_thresh => MAX_TIME_DELTA,
-		-storage => $storage,
-		);
-
-    # iterate through the motion components,
-    # One more iteration (i == -1) corresponds to the whole image
-    # (global motion)
-	for (my $i = -1; $i < $seq->total; $i++) {
-		my $comp_rect;
-		my $color;
-		my $magnitude;
-
-		if ($i < 0) { # case of the whole image
-			$comp_rect = { 'x' => 0, 'y' => 0,
-						   'width' => $mhi->width, 'height' => $mhi->height };
-			$color = CV_RGB(255, 255, 255);
+	# iterate through the motion components,
+	# One more iteration (i == -1) corresponds to the whole image
+	# (global motion)
+	foreach my $i (-1 .. $seq->total - 1) {
+		my ($comp_rect, $color, $magnitude);
+		if ($i < 0) {		# case of the whole image
+			$comp_rect = cvRect(0, 0, @$size);
+			$color = CV_RGB(255,255,255);
 			$magnitude = 100;
-		} else { # i-th motion component
-			next unless my $cc = $seq->GetSeqElem(-index => $i);
-			#print STDERR Data::Dumper->Dump([$cc], [qw($cc)]);
-			$comp_rect = $cc->{rect};
-			next if ($comp_rect->{width} + $comp_rect->{height} < 100);
-			$color = CV_RGB(255, 0, 0);
+		} else {			# i-th motion component
+			$comp_rect = [unpack("x8 x32 i4", $seq->GetSeqElem($i))];
+			$color = CV_RGB(255,0,0);
 			$magnitude = 30;
 		}
-		
+
+		# reject very small components
+		next if ($comp_rect->[2] + $comp_rect->[3] < 100);
+
 		# select component ROI
-		$binary->SetImageROI($comp_rect);
-		$mhi->SetImageROI($comp_rect);
-		$orient->SetImageROI($comp_rect);
-		$mask->SetImageROI($comp_rect);
-		
+		$_->setROI($comp_rect) for ($binary, $mhi, $orient, $mask);
+
 		# calculate orientation
-		my $angle = $mhi->CalcGlobalOrientation(
-			-orientation => $orient, -mask => $mask,
-			-timestamp => $self->{ts}, -duration => MHI_DURATION);
+		my $angle = $orient->CalcGlobalOrientation(
+			$mask, $mhi, $timestamp, MHI_DURATION,
+			);
 		$angle = 360.0 - $angle;  # adjust for images with top-left origin
-		
-		my $count = $binary->Norm(-norm_type => CV_L1);
-		$binary->ResetImageROI;
-		$mhi->ResetImageROI;
-		$orient->ResetImageROI;
-		$mask->ResetImageROI;
-		
+		$angle *= &CV_PI / 180;
+
+		my $count = $binary->Norm(\0, CV_L1, \0);
+
+		$_->resetROI for ($binary, $mhi, $orient, $mask);
+
 		# check for the case of little motion
-		next if ($count < $comp_rect->{width} * $comp_rect->{height} * 0.05);
+		next if ($count <= 0);
+		next if ($count < $comp_rect->[2] * $comp_rect->[3] * 0.05);
 		
 		# draw a clock with arrow indicating the direction
-		my $center = { 'x' => $comp_rect->{x} + $comp_rect->{width}  / 2,
-					   'y' => $comp_rect->{y} + $comp_rect->{height} / 2 };
-		$dst->Circle(
-			-center => $center, -radius => $magnitude * 1.2,
-			-color => $color, -thickness => 3, -line_type => CV_AA);
-		$dst->Line(
-			-pt1 => $center,
-			-pt2 => [ $center->{x} + $magnitude * cos($angle*CV_PI/180),
-					  $center->{y} - $magnitude * sin($angle*CV_PI/180) ],
-			-color => $color, -thickness => 3, -line_type => CV_AA);
+		my $center = [ $comp_rect->[0] + $comp_rect->[2] / 2,
+					   $comp_rect->[1] + $comp_rect->[3] / 2 ];
+		$dst->Circle($center, $magnitude * 1.2, $color, 3, CV_AA);
+		$dst->Line($center, [ $center->[0] + $magnitude * cos($angle),
+							  $center->[1] - $magnitude * sin($angle) ],
+				   $color, 3, CV_AA);
 	}
-	$dst;
+
+	$lastgray = $gray;
 }
 
 
-sub waitkey {
-	my $self = shift;
-    my $pause = 0; my $x = 0;
-    do {
-		my $dt = $self->{ts} - $self->{lastts};
-		$x = Cv->WaitKey(min(max($dt*1000, 10), 1000));
-		if ($x >= 0) {
-			if ($pause) {
-				$pause = 0;
-			} elsif (($x & 0x7f) == 0x20) {
-				$pause = 1;
-			}
-		}
-    } while ($pause);
-    $self->{lastts} = $self->{ts};
-    $x;
+my $capture;
+if (@ARGV == 0) {
+    $capture = Cv::Capture->fromCAM(0);
+} elsif (@ARGV == 1 && $ARGV[0] =~ /^\d$/) {
+    $capture = Cv::Capture->fromCAM($ARGV[0]);
+} else {
+    $capture = Cv::Capture->fromFile($ARGV[0]);
 }
+$capture or die "can't create capture";
 
+Cv->NamedWindow("Motion", 1);
+Cv->CreateTrackbar("Diff Threshold", "Motion", $diff_threshold, 255, sub {});
 
-sub similar {
-	my $self = shift;
-	my $curr = shift;
-	my $last = shift;
-	return 0 unless $last;
-	my $a = $curr->PyrDown;
-	my $b = $last->PyrDown;
-	my $c = $a->Sub($b)->Canny(50, 50);
-	my $c1 = $c->new(-size => [$c->width, 1], -depth => IPL_DEPTH_32F);
-	my $c2 = $c1->new(-size => [1, 1]);
-	my $d = $c->Reduce($c1)->Reduce($c2)->GetD([0, 0])->[0];
-	$d < 10000;
+my $motion;
+while (my $image = $capture->QueryFrame) {
+	unless ($motion) {
+		$motion = Cv::Image->new($image->sizes, CV_8UC3);
+		$motion->origin($image->origin);
+	}
+	update_mhi($image, $motion, 30);
+	$motion->ShowImage("Motion");
+	last if (Cv->WaitKey(10) >= 0);
 }

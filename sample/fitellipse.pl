@@ -19,37 +19,34 @@ use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
 use File::Basename;
-use Data::Dumper;
 
-my $FITELLIPSE2 = 1;
-
-my $slider_pos = 70;
+my $FITELLIPSE2 = 0;
 
 # Load the source image. HighGUI use.
 my $filename = @ARGV > 0? shift : dirname($0).'/'."stuff.jpg";
 
 # load image and force it to be grayscale
-my $image03 = Cv->LoadImage(
-	-filename => $filename,
-	-flags => CV_LOAD_IMAGE_GRAYSCALE)
+my $image = Cv->loadImage($filename, CV_LOAD_IMAGE_GRAYSCALE)
     or die "$0: can't loadimage $filename\n";
     
 # Create windows.
-my $swin = Cv->NamedWindow("Source", 1)
-	->ShowImage(-image => $image03);
+my $swin = "Source";
+Cv->NamedWindow($swin, 1);
+$image->ShowImage($swin);
 
 # Create toolbars. HighGUI use.
-my $rwin = Cv->NamedWindow("Result", 1)
-	->CreateTrackbar(
-    -name => "Threshold",
-    -value => \$slider_pos,
-    -count => 255,
-    -callback => \&process_image,
-    );
+my $rwin = "Result";
+Cv->NamedWindow($rwin, 1);
+Cv->CreateTrackbar("Threshold", $rwin, my $slider_pos = 70, 255, \&process_image);
 &process_image;
 
 # Wait for a key stroke; the same function arranges events processing
-Cv->WaitKey;
+while (1) {
+	my $c = Cv->waitKey;
+	$c &= 0xffff if $c >= 0;
+	last if $c == 27;
+}
+
 exit 0;
 
 # Define trackbar callback functon. This function find contours, draw
@@ -57,32 +54,25 @@ exit 0;
 
 sub process_image {
 	# Create dynamic structure
-	my $stor = Cv->CreateMemStorage;
+	my $stor = Cv::MemStorage->new;
 
 	# Threshold the source image. This needful for cvFindontours().
-	my $image02 = $image03->Threshold(
-		-threshold => $slider_pos,
-		-max_value => 255,
-		-threshold_type => CV_THRESH_BINARY,
-		);
-	$rwin->ShowImage($image02);
+	$image->Threshold(my $bimage = $image->new($image->sizes, CV_8UC1),
+					  $slider_pos, 255, CV_THRESH_BINARY);
+	$bimage->show($rwin);
 
 	# Find all contours.
-	my $cont = Cv->FindContours(
-		-image => $image02,
-		-storage => $stor,
-		# -header_size => sizeof(CvContour), 
-		-mode => CV_RETR_LIST,
-		-method => CV_CHAIN_APPROX_NONE,
-		-offset => scalar cvPoint(0, 0),
+	$bimage->findContours(
+		$stor, my $contours, &Cv::Sizeof::CvContour, 
+		CV_RETR_LIST, CV_CHAIN_APPROX_NONE,
 		);
 
 	# Clear images. IPL use.
-	my $image04 = $image02->new(-channels => 3)->Zero;
+	my $cimage = $bimage->new($bimage->sizes, CV_8UC3)->zero;
 
 	# This cycle draw all contours and approximate it by ellipses.
-	for ( ; $cont; $cont = $cont->h_next) {
-		my $count = $cont->total; # This is number point in contour
+	for ( ; $contours; $contours = $contours->h_next) {
+		my $count = $contours->total; # This is number point in contour
 
 		# Number point must be more than or equal to 6 (for cvFitEllipse_32f).
 		next if ($count < 6);
@@ -90,45 +80,39 @@ sub process_image {
 		my $box;
 		if ($FITELLIPSE2) {
 			# Fits ellipse to current contour.
-			$box = $cont->FitEllipse;
+			$box = $contours->fitEllipse;
 		} else {
 			# Get contour point set.
-			$cont->CvtSeqToArray(
-				-elements => my $points = [],
-				-slice => CV_WHOLE_SEQ,
-				);
+			# Cv::cvCvtSeqToArray($contours, my @points, &CV_WHOLE_SEQ);
+			$contours->cvtSeqToArray(\my @points, &CV_WHOLE_SEQ);
+
 			# Fits ellipse to current contour.
-			$box = Cv->FitEllipse(-points => $points); # XXXXX
+			$box = Cv->fitEllipse(@points);
 		}
 
 		# Draw current contour.
-		$cont->Draw(
-			-image => $image04,
-			-external_color => CV_RGB(255, 255, 255),
-			-hole_color => CV_RGB(255, 255, 255),
-			-max_level => 0,
-			-thickness => 1,
-			-line_type => 8,
-			-offset => scalar cvPoint(0, 0),
-			);
+		$cimage->DrawContours( 
+			$contours, cvScalarAll(255), cvScalarAll(255), 0, 1, 8);
 
 		# Convert ellipse data and draw it.
-		$image04->Ellipse(
-			-center => $box->{center},
-			-axes => scalar cvSize(
-				 -width  => $box->{size}{width}  / 2,
-				 -height => $box->{size}{height} / 2,
-			),
-			-angle => -$box->{angle},
-			-start_angle => 0,
-			-end_angle => 360,
-			-color => CV_RGB(0, 0, 255),
-			-thickness => 1,
-			-line_type => CV_AA,
-			-shift => 0,
+		$cimage->ellipseBox(
+			$box, cvScalar(0, 0, 255), 1, &CV_AA
 			);
+		$cimage->ellipse(
+			$box->[0], # center
+			[ map { $_ / 2 } @{$box->[1]} ], # axes
+			$box->[2], # angle
+			0, 360,
+			cvScalar(0, 255, 255), 1, &CV_AA,
+			);
+		my @vtx = Cv->boxPoints($box);
+		for (my $j = 0; $j < 4; $j++) {
+            $cimage->line(
+				$vtx[$j], $vtx[($j + 1) % 4], cvScalar(0, 255, 0), 1, &CV_AA
+				);
+		}
 	}
     
 	# Show image. HighGUI use.
-	$rwin->ShowImage($image04);
+	$cimage->show($rwin);
 }

@@ -2,7 +2,7 @@
 
 package Cv::Mat::Ghost;
 
-use 5.008000;
+use 5.008008;
 use strict;
 use warnings;
 
@@ -13,3 +13,4 @@ sub DESTROY {
 }
 
 1;
+__END__

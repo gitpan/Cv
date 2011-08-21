@@ -1,0 +1,206 @@
+# -*- mode: text; coding: utf-8; tab-width: 4; -*-
+
+##################################################
+TYPEMAP
+CvArr*				T_PTROBJ_EX
+const CvArr*		T_PTROBJ_EX
+CvArr**				T_AVREF_EX
+const CvArr**		T_AVREF_EX
+CvAttrList				T_OPAQUE
+CvAttrList*				T_PTRREF
+CvBGCodeBookModel*	T_PTROBJ_EX
+const CvBGCodeBookModel*	T_PTROBJ_EX
+CvBox2D				T_PACKED
+CvCapture*			T_PTROBJ_EX
+CvConDensation*		T_PTROBJ_EX
+#CvConnectedComp*	T_PTROBJ_EX
+CvConnectedComp		T_PACKED
+CvContour*			T_PTROBJ_EX
+CvContourTree*		T_PTROBJ_EX
+const CvContourTree* T_PTROBJ_EX
+CvChain*			T_PTROBJ_EX
+CvChainPtReader*	T_PTROBJ_EX
+CvErrorCallback		T_CALLBACK
+CvFileNode*			T_PTROBJ_EX
+const CvFileNode*	T_PTROBJ_EX
+CvFileStorage*		T_PTROBJ_EX
+const CvFileStorage* T_PTROBJ_EX
+CvFont*				T_PTROBJ_EX
+const CvFont*		T_PTROBJ_EX
+CvGraph*			T_PTROBJ_EX
+const CvGraph*		T_PTROBJ_EX
+CvGraphEdge*		T_PTROBJ_EX
+const CvGraphEdge*	T_PTROBJ_EX
+#CvGraphEdge**		T_AVREF_EXX
+CvGraphScanner*		T_PTROBJ_EX
+const CvGraphScanner* T_PTROBJ_EX
+CvGraphVtx*			T_PTROBJ_EX
+const CvGraphVtx*	T_PTROBJ_EX
+CvHaarClassifierCascade*		T_PTROBJ_EX
+CvHistogram*		T_PTROBJ_EX
+const CvHistogram*	T_PTROBJ_EX
+CvHuMoments*		T_PTROBJ_EX
+const CvHuMoments*	T_PTROBJ_EX
+CvKalman*			T_PTROBJ_EX
+const CvKalman*		T_PTROBJ_EX
+CvMat*				T_PTROBJ_EX
+const CvMat*		T_PTROBJ_EX
+CvMatND*			T_PTROBJ_EX
+const CvMatND*		T_PTROBJ_EX
+CvMemBlock*			T_PTROBJ_EX
+const CvMemBlock*	T_PTROBJ_EX
+CvMemStorage*		T_PTROBJ_EX
+const CvMemStorage*	T_PTROBJ_EX
+CvMemStoragePos		T_PACKED
+CvMemStoragePos*	T_PACKED
+const CvMemStoragePos*	T_PACKED
+CvMoments*			T_PTROBJ_EX
+const CvMoments*	T_PTROBJ_EX
+CvMouseCallback		T_CALLBACK
+CvMSERParams		T_PACKED
+CvNextEdgeType		T_UV
+CvPoint				T_PACKED
+CvPoint*			T_AVREF_EX
+CvPoint**			T_AVREF_EXX
+CvPoint2D32f		T_PACKED
+CvPoint2D64f		T_PACKED
+CvPoint2D32f*		T_AVREF_EX
+const CvPoint2D32f*	T_AVREF_EX
+CvPoint3D32f		T_PACKED
+CvPoint3D32f*		T_AVREF_EX
+CvPoint3D64f		T_PACKED
+CvPoint3D64f*		T_AVREF_EX
+#CvPOSITObject*		T_PTROBJ_EX
+CvRNG*				T_PTROBJ_EX
+CvRect				T_PACKED
+CvScalar			T_PACKED
+CvSeq*				T_PTROBJ_EX
+const CvSeq*		T_PTROBJ_EX
+CvSeqBlock*			T_PTROBJ_EX
+const CvSeqBlock*	T_PTROBJ_EX
+CvSeqReader*		T_PTROBJ_EX
+const CvSeqReader*	T_PTROBJ_EX
+CvSeqWriter*		T_PTROBJ_EX
+const CvSeqWriter*	T_PTROBJ_EX
+CvSet*				T_PTROBJ_EX
+const CvSet*		T_PTROBJ_EX
+CvSetElem*			T_PTROBJ_EX
+const CvSetElem*	T_PTROBJ_EX
+CvSize				T_PACKED
+CvSize2D32f			T_PACKED
+CvSlice				T_PACKED
+CvSparseMat*		T_PTROBJ_EX
+const CvSparseMat*	T_PTROBJ_EX
+CvStereoBMState*	T_PTROBJ_EX
+CvStereoGCState*	T_PTROBJ_EX
+CvString			T_PACKED
+CvStringHashNode	T_PACKED
+CvStringHashNode*	T_PTROBJ_EX
+const CvStringHashNode*	T_PTROBJ_EX
+CvSubdiv2D*			T_PTROBJ_EX
+const CvSubdiv2D*	T_PTROBJ_EX
+CvSubdiv2DPointLocation T_IV
+CvSubdiv2DEdge		T_UV
+CvSubdiv2DPoint		T_PACKED
+CvSubdiv2DPoint*	T_AVREF_EX
+CvSURFParams		T_PACKED
+CvSURFPoint			T_PACKED
+CvTermCriteria		T_PACKED
+CvTrackbarCallback	T_CALLBACK
+CvTreeNodeIterator*	T_PTROBJ_EX
+CvTypeInfo*			T_PTROBJ_EX
+const CvTypeInfo*	T_PTROBJ_EX
+CvVideoWriter*		T_PTROBJ_EX
+double*				T_AVREF_EX
+const double*		T_AVREF_EX
+float*				T_AVREF_EX
+const float*		T_AVREF_EX
+float**				T_AVREF_EXX
+const float**		T_AVREF_EXX
+tiny* 				T_AVREF_EX
+int*				T_AVREF_EX
+const int*			T_AVREF_EX
+int64				T_IV
+IplConvKernel*		T_PTROBJ_EX
+const IplConvKernel* T_PTROBJ_EX
+IplImage*			T_PTROBJ_EX
+const IplImage*		T_PTROBJ_EX
+IplImage**			T_AVREF_EX
+const IplImage**	T_AVREF_EX
+VOID*				T_PTRREF
+const VOID*			T_PTRREF
+VOID**				T_PTRREF
+const VOID**		T_PTRREF
+const char**		T_PTRREF
+
+
+##################################################
+INPUT
+
+T_PTROBJ_EX
+	do {
+		IV tmp = XS_ptrobj($arg, \"@{$type =~ /\b(Cv|Ipl)(\w+)/; ['Cv::'.$2]}\");
+		if (tmp == -1)
+			Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+				${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+				\"$var\", \"$ntype\");
+		$var = *(${type}*)&tmp;
+	} while (0)
+
+T_AVREF_EX
+	int length_$var = 0;
+	if (SvROK($arg) && SvIOK(SvRV($arg)) && SvIV(SvRV($arg)) == 0)
+		$var = ($type)0;
+	else if (SvROK($arg) && SvTYPE(SvRV($arg)) == SVt_PVAV) {
+		AV* av = (AV*)SvRV($arg); length_$var = av_len(av) + 1;
+		if (length_$var > 0) {
+			$var = ($type)alloca(sizeof(${var}[0]) * length_$var);
+			XS_unpack_@{$ntype =~ /\w+Ptr$/; [$&]}(av, (@{$type =~ /(const\s+)?(\w+\s*\**)/; [$2]})$var, length_$var);
+		} else
+			$var = ($type)0;
+	} else
+	    Perl_croak(aTHX_ \"%s: %s is not an array reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+
+T_AVREF_EXX
+	int length_$var = 0;
+	int* length_inner_$var = (int*)0;
+	if (SvROK($arg) && SvIOK(SvRV($arg)) && SvIV(SvRV($arg)) == 0)
+		$var = ($type)0;
+	else if (SvROK($arg) && SvTYPE(SvRV($arg)) == SVt_PVAV) {
+		AV* av_outer = (AV*)SvRV($arg); length_$var = av_len(av_outer) + 1;
+		if (length_$var > 0) { int i;
+			$var = ($type)alloca(sizeof(${var}[0])*length_$var);
+			length_inner_$var = (int*)alloca(sizeof(int*)*length_$var);
+			XS_unpack_lengthPtr(av_outer, length_inner_$var, length_$var);
+			for (i = 0; i < length_$var; i++) {
+				${var}[i] = (@{$type =~ /(const\s)?(.*)\s*\*$/; [$2]})alloca(
+					sizeof(${var}[0][0]) * length_inner_${var}[i]);
+				SV* sv_inner = (SV*)(*av_fetch(av_outer, i, 0));
+				XS_unpack_@{$ntype =~ /(\w+Ptr)Ptr$/; [$1]}(
+					(AV*)SvRV(sv_inner), (@{$type =~ /(const\s)?(.*)\s*\*$/; [$2]})(${var}[i]), length_inner_${var}[i]);
+			}
+		} else
+			$var = ($type)0;
+	} else
+	    Perl_croak(aTHX_ \"%s: %s is not an array reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+	
+##################################################
+OUTPUT
+
+T_PTROBJ_EX
+	sv_setref_pv($arg, \"@{$type =~ /\b(Cv|Ipl)(\w+)/; ['Cv::'.$2]}\", (void*)$var);
+
+T_AVREF_EX
+	if (SvTYPE($arg) == SVt_NULL) {
+		;
+	} else if (SvROK($arg) && SvTYPE(SvRV($arg)) == SVt_PVAV) {
+		XS_pack_${ntype}($arg, $var, length($var));
+	} else {
+		Perl_croak(aTHX_ \"%s: %s is not an array reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\");
+	}

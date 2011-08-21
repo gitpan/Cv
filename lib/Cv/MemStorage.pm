@@ -2,40 +2,32 @@
 
 package Cv::MemStorage;
 
-use 5.008000;
+use 5.008008;
 use strict;
 use warnings;
-use Carp;
-use Scalar::Util qw(blessed);
-use Data::Dumper;
 
 BEGIN {
-	$Data::Dumper::Terse = 1;
+	Cv::aliases(
+		[ 'Cv::CreateMemStorage', 'new' ],
+		[ 'cvMemStorageAlloc' ],
+		[ 'AllocString' ],
+		[ 'cvClearMemStorage' ],
+		[ 'cvCreateChildMemStorage' ],
+		[ 'cvReleaseMemStorage' ],
+		[ 'cvRestoreMemStoragePos' ],
+		[ 'cvSaveMemStoragePos' ],
+		);
 }
 
-use Cv::Constant;
-use Cv::CxCore qw(:all);
+use Cv::ChildMemStorage;
 
-our $VERSION = '0.04';
-
-# Preloaded methods go here.
-
-sub new {
-    my $class = shift;
-	my %av = argv([ -block_size => 0 ], @_);
-	bless cvCreateMemStorage($av{-block_size}), $class;
+sub AllocString {
+	# AllocString($stor, $ptr)
+	# AllocString($stor, $ptr, $len)
+	my ($stor, $ptr) = splice(@_, 0, 2);
+	my $len = shift || length($ptr);
+	cvMemStorageAllocString($stor, $ptr, $len);
 }
-
-sub DESTROY {
-	my $self = shift;
-	cvReleaseMemStorage($self);
-}
-
-sub ClearMemStorage {
-    my $self = shift;
-	my %av = argv([ -storage => $self ], @_);
-	cvClearMemStorage($av{-storage});
-}
-
 
 1;
+__END__

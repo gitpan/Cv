@@ -7,15 +7,15 @@ use Cv;
 use Data::Dumper;
 use List::Util qw(max min);
 
-my $cap = undef;
+my $cap;
 if (@ARGV == 0) {
-	$cap = Cv->CreateCameraCapture(0);
+    $cap = Cv::Capture->fromCAM(0);
 } elsif (@ARGV == 1 && $ARGV[0] =~ /^\d$/) {
-	$cap = Cv->CreateCameraCapture($ARGV[0]);
+    $cap = Cv::Capture->fromCAM($ARGV[0]);
 } else {
-	$cap = Cv->CreateFileCapture($ARGV[0]);
+    $cap = Cv::Capture->fromFile($ARGV[0]);
 }
-$cap or die "$0: Could not initialize capturing...\n";
+$cap or die "can't create capture";
 
 print "Hot keys: \n",
 	"\tESC - quit the program\n",
@@ -25,24 +25,20 @@ print "Hot keys: \n",
 	"To initialize tracking, select the object with mouse\n";
 
 my ($vmin, $vmax, $smin) = (10, 256, 30);
-my $image = $cap->QueryFrame->CloneImage;
-my $win = Cv->NamedWindow("CamShiftDemo")
-	->SetMouseCallback(-callback => \&on_mouse, -param => \0)
-	->CreateTrackbar(-name => "Vmin", -value => $vmin, -count => 256)
-	->CreateTrackbar(-name => "Vmax", -value => $vmax, -count => 256)
-	->CreateTrackbar(-name => "Smin", -value => $smin, -count => 256)
-	;
+my $image = $cap->QueryFrame->Clone;
+Cv->NamedWindow("CamShiftDemo");
+Cv->SetMouseCallback("CamShiftDemo", \&on_mouse);
+Cv->CreateTrackbar("Vmin", "CamShiftDemo", $vmin, 256);
+Cv->CreateTrackbar("Vmax", "CamShiftDemo", $vmax, 256);
+Cv->CreateTrackbar("Smin", "CamShiftDemo", $smin, 256);
 
-my $histimg = Cv->CreateImage([320, 200], 8, 3)->Zero;
+my $histimg = Cv::Image->new([200, 320], CV_8UC3)->Zero;
 my $hdims = 16;
 my $hranges_arr = [0, 180];
-my $hist = Cv->CreateHist(-sizes => [$hdims],
-						  -ranges => [$hranges_arr],
-						  -type => CV_HIST_ARRAY,
-						  );
+my $hist = Cv::Histogram->new([$hdims], CV_HIST_ARRAY, [$hranges_arr]);
 
-my %selection;
-my %origin;
+my $selection;
+my $origin;
 my $select_object;
 my $track_object;
 my $track_window;
@@ -51,59 +47,54 @@ my $backproject_mode = 0;
 my $show_hist = 1;
 
 while (1) {
-	$image = $cap->QueryFrame->CloneImage;
+	$image = $cap->QueryFrame->Clone;
 	my $hsv = $image->CvtColor(CV_BGR2HSV);
+	
+	if ($track_object) {
+		my $mask = Cv::Image->new($image->sizes, CV_8UC1);
+		$hsv->InRange([0, $smin, min($vmin, $vmax), 0],
+					  [180, 256, max($vmin, $vmax), 0],
+					  $mask);
+		my ($hue) = $hsv->Split;
+		if ($track_object < 0) {
+			$hue->SetROI($selection);
+			$mask->SetROI($selection);
+			$hist->Calc([$hue], $mask);
+			$hue->ResetROI;
+			$mask->ResetROI;
+			$track_window = $selection;
+			$track_object = 1;
 
-	if ( $track_object ) {
-		my $mask = Cv->CreateImage([$image->GetSize], 8, 1);
-		$hsv->InRangeS(-lower => [0, $smin, min($vmin,$vmax), 0],
-					   -upper => [180, 256, max($vmin,$vmax), 0],
-					   -dst => $mask);
-		my $c = $hsv->GetChannels;
-		my $d = $hsv->GetDepth;
-		my $hue = Cv->CreateImage( [$image->GetSize], 8, 1 );
-		$hsv->Split($hue, undef, undef, undef);
-
-		 if ( $track_object < 0 ) {
-			 $hue->SetImageROI( {%selection} );
-			 $mask->SetImageROI( {%selection} );
-			 $hist->Calc( -images => [$hue], -mask => $mask );
-			 $hue->ResetImageROI;
-			 $mask->ResetImageROI;
-			 %$track_window = %selection;
-			 $track_object = 1;
-
-			 my $bin_w = $histimg->GetSize->[0] / $hdims;
-			 for my $i (0..$hdims-1) {
-				 my $val = Cv->Round($hist->QueryHistValue([$i]) * $histimg->GetSize->[1]/255 );
-#				 my $val = Cv->Round($hist->GetRealD($i) * $histimg->GetSize->[1]/255 );
-				 my $color = &hsv2rgb($i*180.0 / $hdims);
-				 $histimg->Rectangle(
-					-pt1 => [$i*$bin_w, $histimg->GetSize->[1]],
-					-pt2 => [($i+1)*$bin_w, $histimg->GetSize->[1] - $val],
-					-color => $color,
-					-thickness => -1,
-					-line_type => 8,
-					-shift => 0);
-			 }
-		 }
+			my $bin_w = $histimg->width / $hdims;
+			for my $i (0 .. $hdims - 1) {
+				my $val = Cv->Round($hist->QueryHistValue([$i]) *
+									$histimg->height / 255);
+				my $color = hsv2rgb($i * 180 / $hdims);
+				$histimg->Rectangle(
+					[$i * $bin_w, $histimg->height],
+					[($i + 1) * $bin_w, $histimg->height - $val],
+					$color, -1, 8, 0);
+			}
+		}
 		 
-		 my $backproject = $hist->CalcBackProject([$hue])->And($mask);
-		 my $cam = $backproject->CamShift( -window => $track_window );
-		 %$track_window = %{$cam->{comp}{rect}};
-
-		 $image = $backproject->CvtColor(CV_GRAY2BGR) if( $backproject_mode );
-		 $cam->{box}{angle} = -$cam->{box}{angle} unless ($image->GetOrigin);
-		 $image->EllipseBox( -box => $cam->{box}, -color => 'red', -thickness => 3 );
+		$hist->CalcBackProject([$hue], my $backproject = $hue->new);
+		$backproject->And($mask, $backproject)
+			->CamShift($track_window,
+					   cvTermCriteria(CV_TERMCRIT_EPS|CV_TERMCRIT_ITER, 10, 1),
+					   my $comp, my $box);
+		$track_window = $comp->[2]; # rect
+		$image = $backproject->CvtColor(CV_GRAY2BGR) if($backproject_mode);
+		$box->[2] = -$box->[2] if $image->origin == 0; # angle
+		$image->EllipseBox($box, CV_RGB(255, 0, 0), 3);
 	}
 
-	if ( $select_object && $selection{width} > 0 && $selection{height} > 0 ) {
-		$image->SetImageROI( {%selection} );
-		$image->XorS(-value => [255, 255, 255], -dst => $image);
-		$image->ResetImageROI;
+	if ($select_object && $selection->[2] > 0 && $selection->[3] > 0) {
+		$image->SetROI($selection);
+		$image->Xor([255, 255, 255], $image);
+		$image->ResetROI;
 	}
 
-	$win->ShowImage($image);
+	$image->ShowImage("CamShiftDemo");
 	$histimg->ShowImage("Histogram") if ($show_hist);
 
 	my $c = Cv->WaitKey(30);
@@ -117,9 +108,7 @@ while (1) {
 		$histimg->Zero;
 	} elsif (chr($c) eq 'h') {
 		$show_hist ^= 1;
-		unless ($show_hist) {
-			$histimg->DestroyWindow;
-		}
+		Cv->DestroyWindow("Histogram") unless ($show_hist);
 	}
 }
 
@@ -144,44 +133,37 @@ sub hsv2rgb {
 
 
 sub on_mouse {
-	
-    return unless $image;
-	
 	my ($event, $x, $y, $flags, $param) = @_;
-	
-    if( $image->GetOrigin ) {
-        $y = $image->GetSize->[1] - $y;
-	}
-	
-    if ( $select_object == 1 ) {
-        $selection{x} = min($x, $origin{x});
-        $selection{y} = min($y, $origin{y});
-        $selection{width} = $selection{x} + abs($x - $origin{x});
-        $selection{height} = $selection{y} + abs($y - $origin{y});
-        
-        $selection{x} = max( $selection{x}, 0 );
-        $selection{y} = max( $selection{y}, 0 );
-        $selection{width} = min( $selection{width}, $image->GetSize->[0] );
-        $selection{height} = min( $selection{height}, $image->GetSize->[1] );
-        $selection{width} -= $selection{x};
-        $selection{height} -= $selection{y};
-    }
 
-    if ( $event == CV_EVENT_LBUTTONDOWN ) {
-        $origin{x} = $x;
-        $origin{y} = $y;
-        $selection{x} = $x;
-        $selection{y} = $y;
-        $selection{width} = 0;
-        $selection{height} = 0;
-        $select_object = 1;
-	} elsif ( $event == CV_EVENT_LBUTTONUP ) {
-        $select_object = 0;
-        if ( $selection{width} > 0 && $selection{height} > 0 ) {
-            $track_object = -1;
+	return unless $image;
+	unless ($image->origin == 0) {
+		$y = $image->height - $y;
+	}
+
+	if ($select_object) {
+		my $sx = min($x, $origin->[0]);
+		my $sy = min($y, $origin->[1]);
+		my $sw = $sx + abs($x - $origin->[0]);
+		my $sh = $sy + abs($y - $origin->[1]);
+        $selection = [
+			max($sx, 0),
+			max($sy, 0),
+			min($sw, $image->width) - $sx,
+			min($sh, $image->height) - $sy,
+			];
+	}
+
+	if ($event == CV_EVENT_LBUTTONDOWN) {
+		$origin = [ $x, $y ];
+		$selection = [ $x, $y, 0, 0 ];
+		$select_object = 1;
+	} elsif ($event == CV_EVENT_LBUTTONUP) {
+		$select_object = 0;
+		if ($selection->[2] > 0 && $selection->[3] > 0) {
+			$track_object = -1;
 		}
-	} elsif ( $event == CV_EVENT_RBUTTONDOWN ) {
+	} elsif ($event == CV_EVENT_RBUTTONDOWN) {
 		$select_object = 0;
 		$track_object = 0;
-    }
+	}
 }

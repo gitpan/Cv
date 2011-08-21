@@ -1,441 +1,5 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-# ######################################################################
-#
-#      @@@@@  @@   @@
-#     @        @   @
-#     @        @   @
-#     @         @ @
-#      @@@@@     @
-#
-# ######################################################################
-
-=head1 NAME
-
-Cv - helps you to make something around computer vision.
-
-=head1 SYNOPSIS
-
- use Cv;
- 
- my $image = Cv->LoadImage("/path/to/image", CV_LOAD_IMAGE_COLOR);
- $image->ShowImage("image");
- Cv->WaitKey;
-
-
-=head1 DESCRIPTION
-
-C<Cv> is a Perl interface to OpenCV computer vision library that
-originally developed by Intel. I am making this module, to use the
-computer vision more easily like a slogan of perl I<"Easy things should
-be easy, hard things should be possible.">
-
-C<Cv> is developing as follows. I am not coming satisfactorily. I am
-learning Perl and OpenCV. I hope to grow it to an interesting module.
-
-=over 4
-
-=item *
-
-The memory is deallocated by destroying the object. 
-
-=item *
-
-The function name is usually formed by omitting cv prefix.
-
-=item * 
-
-The argument of the function is a named argument that is always
-preceded by a hyphen.  Please see an OpenCV reference manual
-http://opencv.willowgarage.com/documentation/ about a name of an
-argument.
-
-=item *
-
-You can also use positional arguments, but you can be confused because
-different from prototype of C in order of arguments.
-
- # C prototype
- IplImage* cvLoadImage(const char* filename, int iscolor=CV_LOAD_IMAGE_COLOR)
-
- # Named argument
- my $image = Cv->LoadImage(-filename => $filename,
-                           -iscolor => CV_LOAD_IMAGE_COLOR);
-
- # Optional arguments enable you to omit arguments for some parameters.
- my $image = Cv->LoadImage(-filename => $filename);
-
- # Positional arguments
- my $image = Cv->LoadImage($filename, CV_LOAD_IMAGE_COLOR);
-
-=back
-
-
-=head1 SAMPLES
-
-The following samples demonstrates how to use C<Cv>.
-
-=head2 Images and Arrays
-
-Functions of accessing elements and sub-arrays. And C<IplImage>
-processing.
-
-=over 4
-
-=item * 
-
-Most functions return C<-dst> that is the object.  Excludes the return
-value is used, like a C<GetD>, etc.
-
-=item * 
-
-The object is created with the same attribute of C<-src> if you don't
-specify C<-dst>.
-
-=back
-
- my $image = Cv->LoadImage("/path/to/image", CV_LOAD_IMAGE_COLOR);
- $image->SetImageROI([0, 0, $image->width/2, $image->width/2]);
- my $gray = $image->CvtColor(CV_RGB2GRAY);
- $image->ResetImageROI;
- $gray->ShowImage("gray");
- Cv->WaitKey;
-
-The next function is usable.
-
- AbsDiff AbsDiffS Acc AdaptiveThreshold Add AddS AddWeighted Affine And
- AndS BoxPoints CalcGlobalOrientation CalcMotionGradient
- CalcOpticalFlowPyrLK CalibrateCamera2 Calibration CamShift Canny Ceil
- Circle Cmp CmpS ComputeCorrespondEpilines Convert ConvertScale
- ConvertScaleAbs Copy CopyMakeBorder CrossProduct CvConnectedComp
- CvtColor CvtScale CvtScaleAbs DFT Dilate DistTransform Div
- DrawChessboardCorners Ellipse EllipseBox EndFindContours EqualizeHist
- Erode Error Exp ExtractSURF FillConvexPoly FillPoly Filter2D
- FindChessboardCorners FindContours FindCornerSubPix
- FindExtrinsicCameraParams2 FindFundamentalMat FindNextContour
- FitEllipse FitLine Flip FloodFill Floor GEMM Get1D Get2D Get3D GetCol
- GetCols GetD GetDimSize GetDims GetElemType GetOptimalDFTSize
- GetReal1D GetReal2D GetReal3D GetRealD GetRectSubPix GetRow GetRows
- GetSize GetSubRect GoodFeaturesToTrack HaarDetectObjects HoughCircles
- HoughLines2 InRange InRangeS InitUndistortMap InitUndistortRectifyMap
- Inpaint Integral Invert KMeans2 LUT Laplace Line Load LoadCascade Log
- MatMul MatMulAdd MatchTemplate Max MaxRect MaxS Merge Min MinAreaRect2
- MinMaxLoc MinS Moments MorphologyEx Mul Norm Normalize Not Or OrS
- PolyLine Pow PutText PyrDown PyrMeanShiftFiltering PyrUp Rectangle
- Reduce Remap Resize Round RunningAvg SURFParams Scale ScaleAdd Set
- Set1D Set2D Set3D SetD SetIdentity SetReal1D SetReal2D SetReal3D
- SetRealD SetZero ShowImage Smooth Sobel Split StartFindContours
- StereoCalibrate StereoRectify StereoRectifyUncalibrated Sub SubRS SubS
- SubstituteContour Threshold Undistort2 UndistortPoints
- UpdateMotionHistory Watershed Xor XorS Zero height show width
-
-=head2 GUI
-
-Basic GUI functions (Window, Trackbar, Mouse).
-
- my $img = Cv->CreateImage([320, 240], 8, 3)->Zero;
- my $win = Cv->NamedWindow("Window");
- 
- my $value = 0;
- $win->CreateTrackbar(
-     -trackbar_name => "value",
-     -value => \$value,
-     -count => 100,
-     -on_change => \&on_change,
-     );
-
- $win->SetMouseCallback(-callback => \&on_mouse, -param => 123);
- 
- $win->ShowImage($img);
- $img->WaitKey;
- 
- sub on_change {
-     print "[on_change]: value = $value\n";
- }
-
- sub on_mouse {
-     print "[on_mouse]: event = $_[0], x = $_[1], y = $_[2], flags = $_[3], param = $_[4]\n";
- }
-
-Text rendering functions.
-
- my $image = Cv->CreateImage(-size => [ 320, 240 ], -depth => 8, -channels => 3);
- $image->Set(-value => [ 0, 0, 0 ]);
- my $text = "Hello, OpenCV";
- my $font = Cv->InitFont(
-     -font_face => CV_FONT_HERSHEY_COMPLEX,
-     -hscale    => 0.5,
-     -vscale    => 0.5,
-     -shear     => 0,
-     -thickness => 1,
-     -line_type => 16,
-     );
- $font->PutText(-img => $image, -text => $text, -org => [100, 100]);
-
-=head2 Matrix and Sequence
-
-The following sample is minaria.c attached to OpenCV samples.  This
-sample displays a minimum rectangle and a minimum circle that encloses
-all the points.
-
- my $ARRAY = 1;                    # 1: Cv:Mat, 0: Cv::Seq
- 
- my $win = Cv->NamedWindow(-name => "rect & circle", -flags => 1);
- my $img = Cv->new(-size => [ 500, 500 ], -depth => 8, -channels => 3);
- my $mem = Cv->CreateMemStorage;
- 
- while (1) {
-     my $p = undef;
-     my $count = rand(100) + 1;
- 
-     if ($ARRAY) {
-         $p = Cv->CreateMat(
-             -rows => 1,
-             -cols => $count,
-             -type => CV_32SC2,    # as cvPoint
-             );
-     } else {
-         use Cv::Seq::Point;
-         $p = Cv::Seq::Point->new(
-             -seq_flags => CV_SEQ_KIND_GENERIC | CV_32SC2,
-             -storage => $mem,
-             );
-     }
- 
-     foreach (0 .. $count - 1) {
-         my $pt = cvPoint(
-             -x => rand($img->width/2)  + $img->width/4,
-             -y => rand($img->height/2) + $img->height/4,
-             );
-         if ($ARRAY) {
-             $p->SetD(-idx => $_, -value => $pt);
-         } else {
-             $p->Push(-element => $pt);
-         }
-     }
- 
-     $img->Zero;
-     foreach (0 .. $count - 1) {
-         my $pt;
-         if ($ARRAY) {
-             $pt = $p->GetD(-idx => $_);
-         } else {
-             $pt = $p->GetSeqElem(-index => $_);
-         }
-         $img->Circle(
-             -center => $pt,
-             -radius => 2,
-             -color => CV_RGB(255, 0, 0),
-             -thickness => CV_FILLED,
-             -line_type => CV_AA,
-             -shift => 0,
-             );
-     }
- 
-     my @b = Cv->BoxPoints(-box => $p->MinAreaRect2());
-     foreach ([ $b[0], $b[1] ], [ $b[1], $b[2] ],
-              [ $b[2], $b[3] ], [ $b[3], $b[0] ]) {
-         $img->Line(
-             -pt1 => $_->[0],
-             -pt2 => $_->[1],
-             -color => CV_RGB(0, 255, 0),
-             -thickness => 1,
-             -line_type => CV_AA,
-             -shift => 0,
-             );
-     }
- 
-     $img->Circle(
-         -circle => $p->MinEnclosingCircle(),
-         -color => CV_RGB(255, 255, 0),
-         -thickness => 1,
-         -line_type => CV_AA,
-         -shift => 0,
-         );
- 
-     $win->ShowImage(-image => $img);
-     my $key = $win->WaitKey;
-     $key &= 0x7f if $key >= 0;
-     last if $key == 27 || $key == ord('q') || $key == ord('Q'); # 'ESC'
- }
-
-=head2 Capture
-
-The following sample capture and displays the image from camera.
-
- my $capture = Cv->CreateCameraCapture(0);
- die "can't create capture" unless $capture;
-
- while (my $frame = $capture->QueryFrame) {
-     $frame->ShowImage;
-     Cv->WaitKey(33);
- }
-
-=head2 Histograms
-
-The following sample displays the histogram of each RGB of three
-channel color image.
-
- my @planes = map { Cv->new(scalar $img->GetSize, $img->depth, 1) } (0..2);
- $img->Split(-dst => \@planes);
- 
- my @hists = map {
-     Cv->CreateHist(-sizes => [256], -type => CV_HIST_ARRAY)
-         ->Calc(-images => [$_])
-     } @planes;
- 
- my ($width, $height) = (256, 200);
- my @himages = map { Cv->new([$width, $height], 8, 3)->Zero->Not } (0..2);
- my @mm = map { $_->GetMinMaxHistValue } @hists;
- 
- map {
-     $hists[$_]->ScaleHist(-scale => $height/$mm[$_]->{max}{val})
-         if $mm[$_]->{max}{val};
- } (0..2);
- 
- my $bin = Cv->Round($width/256);
- for my $i (0..255) {
-     my ($x, $y) = ($i*$bin, $height);
-     my $pt1 = [$x, $y];
-     my @pt2 = map { [$x+$bin, $y - $hists[$_]->QueryHistValue([$i])] } (0..2);
-     $himages[0]->Rectangle($pt1, $pt2[0], [$i, 0, 0] );
-     $himages[1]->Rectangle($pt1, $pt2[1], [0, $i, 0] );
-     $himages[2]->Rectangle($pt1, $pt2[2], [0, 0, $i] );
- }
- 
- $dst = Cv->new([$width, $height*3], 8, 3);
- for (0..2) {
-     my $roi = [0, $height*$_, $width, $height];
-     $himages[$_]->Copy($dst->SetImageROI($roi));
- }
- $dst->ResetImageROI;
- $dst->ShowImage('Histogram');
- $img->ShowImage('Image');
- Cv->WaitKey(1000);
-
-The next function is usable. 
-
- CalcBackProject CalcBackProjectPatch CalcHist CalcPGH ClearHist
- CompareHist CopyHist GetMinMaxHistValue NormalizeHist QueryHistValue
- ReleaseHist ScaleHist ThreshHist
-
-=head2 FileStorage
-
-The following samples are examples that save data by cvWrite.
-
- my $filename = "/path/to/file";
- my $fs = Cv->OpenFileStorage(-filename => $filename,
-                              -flags => CV_STORAGE_WRITE);
- my $mat = Cv->CreateMat(3, 3, CV_32F);
- $mat->SetIdentity;
- $fs->Write("MAT", $mat);
-
-The following samples are examples that save data by cvWrite.
-
- my $fs = Cv->OpenFileStorage(-filename => $filename,
-                              -flags => CV_STORAGE_READ);
- my $param = $fs->GetFileNodeByName("MAT");
- my $ = $fs->Read($param);
-
-Sorry. Only the following function can be used still. 
-
- Write Read GetFileNodeByName
-
-=head2 Contour
-
-The following sample finds the contours, and  does highlight display.
-
- my $storage = Cv->CreateMemStorage;
- my $gray = $image->CvtColor(CV_RGB2GRAY);
- my $canny = $gray->PyrDown->PyrUp->Canny(-dst => $gray->new);
- for (my $contour = $canny->FindContours(-storage => $storage);
-      $contour; $contour = $contour->h_next) {
-   $contour->Draw(-image => $image, -max_level => 0, -thickness => 3,
-                  -external_color => [ rand(255), rand(255), rand(255) ],
-                  -hole_color => CV_RGB(255, 255, 255));
-   $image->ShowImage("contour");
-   last if Cv->WaitKey(100) >= 0;
- }
-
-
-=head2 RNG
-
-The following sample sets and displays a random value to all pixels. 
-
- my $rng = Cv->RNG(-1);
- my $img = Cv->CreateImage([ 320, 240 ], IPL_DEPTH_8U, 3);
- for (0..10) {
-     $rng->RandArr(
-         -arr => $img,
-         -dist_type => CV_RAND_NORMAL,
-         -param1 => scalar cvScalarAll(0),
-         -param2 => scalar cvScalarAll(255),
-     );
-     $img->NamedWindow->ShowImage;
-     Cv->WaitKey(100);
- }
-
-Random number generator. 
-
-=head2 Experimental
-
-The following are experimental. See sample code, please.
-
-=over 4
-
-=item * Hough
-
-HoughCircles, HoughLines, HoughLines2
-
-=item * Moments
-
-Accessing Moments and HuMoments structure
-
-=item * ConvKernel
-
-create a structuring element in the morphological operations
-
-=item * BGCodebook
-
-The codebook background model
-
-=item * HaarDetectObjects
-
-Detects objects in the image
-
-=item * StereoBMState
-
-The structure for block matching stereo correspondence algorithm
-
-=item * Kalman
-
-Allocates Kalman filter structure
-
-=item * MotionHistory
-
-Segments whole motion into separate moving parts
-
-=back
-
-=head1 EXPORT
-
-=over 4
-
-=item Cv::Constant
-
-CV_*, IPL_*
-
-=item Cv::CxCore
-
-cvBox, cvBox2D, cvBoxPoints, cvCeil, cvFloor, cvIndex, cvMaxRect,
-cvPoint, cvRealScalar, cvRect, cvRound, cvScalar, cvScalarAll, cvSize,
-cvSlice, cvTermCriteria, CV_RGB, CV_MAJOR_VERSION, CV_MINOR_VERSION,
-CV_SUBMINOR_VERSION, CV_VERSION,
-
-=back
-
-=cut
-
 package Cv;
 
 use 5.008008;
@@ -444,204 +8,374 @@ use warnings;
 use Carp;
 use Scalar::Util qw(blessed);
 
-use Cv::Constant;
-use Cv::CxCore qw(:all);
-use Cv::Image;
+our $VERSION = '0.07';
 
-use Data::Dumper;
+require XSLoader;
+XSLoader::load('Cv', $VERSION);
 
-BEGIN {
-	$Data::Dumper::Terse = 1;
+sub assoc {
+	my $family = shift;
+	my $short = shift;
+	if ($short =~ /^[a-z]/) {
+		(my $caps = $short) =~ s/^[a-z]/\U$&/;
+		(my $upper = $short) =~ s/^[a-z]+/\U$&/;
+		foreach ($caps, "cv$caps", $upper, "cv$upper") {
+			return join('::', $family, $_) if $family->can($_);
+		}
+	} else {
+		foreach ("cv$short") {
+			return join('::', $family, $_) if $family->can($_);
+		}
+	}
+	return undef;
 }
 
-require Exporter;
-our @ISA = qw(Exporter Cv::Image);
+sub alias {
+	my $family = shift;
+	my $real = shift;
+	return unless my $alias = shift;
+	my %subr = ();
+	if ($alias ne $real) {
+		$subr{$alias} = $real;
+	}
+	if ($alias =~ s/^[A-Z][a-z]+/\L$&/) {
+		$subr{$alias} = $real;
+	} elsif ($alias =~ s/^[A-Z]+$/\L$&/) {
+		$subr{$alias} = $real;
+	}
+	foreach (sort { lc $a cmp lc $b } keys %subr) {
+		next if $family->can($_);
+		my $defn = join('::', $family, $_);
+		my $subr = $subr{$_} =~ /::/ ?
+			$subr{$_} : join('::', $family, $subr{$_});
+		no warnings;
+		no strict 'refs';
+		*$defn = \&$subr;
+	}
+}
 
-our @EXPORT = (
-	@Cv::Constant::EXPORT,
-	@Cv::CxCore::EXPORT,
-	);
+sub aliases {
+	my ($family, $filename, $line, $subr, $has_args, $wantarray,
+		$evaltext, $is_require, $hints, $hitmask) = caller(0);
+	for (@_) {
+		my $real = shift(@$_);
+		my $assoc = $real;
+		$assoc =~ s/.*:://;
+		$assoc =~ s/^cv//;
+		unshift(@$_, $assoc) if ($assoc);
+		alias($family, $real, $_) for @$_;
+	}
+}
+
+use Cv::Constant;
+use Cv::BGCodeBookModel;
+use Cv::Capture;
+use Cv::Contour;
+use Cv::ConvKernel;
+use Cv::FileStorage;
+use Cv::Flipbook;
+use Cv::Font;
+use Cv::Histogram;
+use Cv::Image;
+use Cv::Kalman;
+use Cv::Mat;
+use Cv::MatND;
+use Cv::MemStorage;
+use Cv::Moments;
+use Cv::RNG;
+use Cv::Seq;
+use Cv::SeqReader;
+use Cv::SparseMat;
+use Cv::StereoBMState;
+use Cv::String;
+use Cv::Subdiv2D;
+
+require Exporter;
+
+our @ISA = qw(Exporter);
 
 our %EXPORT_TAGS = (
 	'all' => [
-		@{$Cv::Constant::EXPORT_TAGS{'all'}},
-		@{$Cv::CxCore::EXPORT_TAGS{'all'}},
-	],
-	);
+		(map { @{ $Cv::Constant::EXPORT_TAGS{$_} } }
+		 grep { $_ <= cvVersion() } keys %Cv::Constant::EXPORT_TAGS),
 
-our @EXPORT_OK = (
-	@{ $EXPORT_TAGS{'all'} },
-	);
+		qw(
 
-our $VERSION = '0.04';
+CV_PI
+CV_RGB
+CV_WHOLE_SEQ
+cvMSERParams
+cvPoint
+cvPoint2D32f
+cvPoint2D64f
+cvPoint3D32f
+cvPoint3D64f
+cvRealScalar
+cvRect
+cvRound
+cvSURFParams
+cvScalar
+cvScalarAll
+cvSize
+cvSize2D32f
+cvTermCriteria
+cvVersion
+
+)]);
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+
+our @EXPORT = ( @{ $EXPORT_TAGS{'all'} } );
+
+sub AUTOLOAD {
+    our $AUTOLOAD;
+    (my $short = $AUTOLOAD) =~ s/.*:://;
+	if (my $real = assoc(__PACKAGE__, $short)) {
+		no strict "refs";
+		if ($real =~ /::cv/) {
+			*$AUTOLOAD = sub {
+				shift unless defined $_[0] && ref $_[0] && blessed $_[0];
+				# &$real(@_);
+				goto &$real;
+			};
+		} else {
+			*$AUTOLOAD = \&$real;
+		}
+		# print STDERR "AUTOLOAD: $AUTOLOAD = $real\n";
+		goto &$AUTOLOAD;
+	}
+    croak "&Cv::constant not defined" if $short eq 'constant';
+    my ($error, $val) = constant($short);
+    if ($error) { croak $error; }
+    {
+		no strict 'refs';
+	    *$AUTOLOAD = sub { $val };
+    }
+    goto &$AUTOLOAD;
+}
 
 # Preloaded methods go here.
 
-# ------------------------------------------------------------
-#  CreateImage - Creates an image header and allocates the image data.
-#  (see Cv::Image)
-# ------------------------------------------------------------
-sub new {
+sub HasGUI {
+	if (fork) {
+		wait;
+		$? == 0;
+	} else {
+		open(STDERR, ">/dev/null");
+		cvNamedWindow('Cv');
+		cvDestroyWindow('Cv');
+		exit(0);
+	}
+}
+
+sub HasQt {
+	if (fork) {
+		wait;
+		$? == 0;
+	} else {
+		open(STDERR, ">/dev/null");
+		cvFontQt('Times');
+		exit(0);
+	}
+}
+
+sub FitEllipse {
 	my $class = shift;
-	$class->SUPER::new(@_);
+	if (ref $_[0] eq 'ARRAY') {
+		my $stor = Cv::MemStorage->new;
+		my $points = Cv::Seq::Point->new(&CV_32SC2, $stor);
+		$points->Push(@_ > 1 ? @_ : @{$_[0]});
+		$points->FitEllipse;
+	} elsif (blessed $_[0] && $_[0]->isa('Cv::Arr')) {
+		(bless \@_, 'Cv::Arr')->FitEllipse;
+	} else {
+		croak "usage: FitEllipse([src0, src1, ...])"
+	}
 }
 
-# ------------------------------------------------------------
-#  CreateMat - Creates new matrix
-#  (see Cv::Mat)
-# ------------------------------------------------------------
-sub CreateMat {
-	my $self = shift;
-	use Cv::Mat;
-	Cv::Mat->new(@_);
-#	Cv::Mat->CreateMat(@_);
+sub Merge {
+	my $class = shift;
+	if (ref $_[0] eq 'ARRAY') {
+		(bless $_[0], 'Cv::Arr')->Merge(@_[1 .. $#_]);
+	} elsif (blessed $_[0] && $_[0]->isa('Cv::Arr')) {
+		(bless \@_, 'Cv::Arr')->Merge;
+	} else {
+		croak "usage: Merge([src0, src1, ...], dst)"
+	}
 }
 
-# ------------------------------------------------------------
-#  CreateSeq - Creates sequence
-#  (see Cv::Seq)
-# ------------------------------------------------------------
-sub CreateSeq {
-	my $self = shift;
-	use Cv::Seq;
-	Cv::Seq->new(@_);
+sub MinAreaRect {
+	my $class = shift;
+	my $stor = pop if blessed $_[-1] && $_[-1]->isa('Cv::MemStorage');
+	$stor ||= Cv::MemStorage->new;
+	my $points = Cv::Seq::Point->new(&CV_32SC2, $stor);
+	$points->Push(@_ > 1 ? @_ : @{$_[0]});
+	$points->minAreaRect($stor);
 }
 
-# ------------------------------------------------------------
-#  CreateMemStorage - Creates memory storage
-#  (see Cv::MemoryStorage)
-# ------------------------------------------------------------
-sub CreateMemStorage {
-	my $self = shift;
-	use Cv::MemStorage;
-	Cv::MemStorage->new(@_);
+sub MinEnclosingCircle {
+	my $class = shift;
+	my $stor = Cv::MemStorage->new;
+	my $points = Cv::Seq::Point->new(&CV_32SC2, $stor);
+	$points->Push(@_ > 1 ? @_ : @{$_[0]});
+	$points->minEnclosingCircle(my $center, my $radius);
+	wantarray? ($center, $radius) : [$center, $radius];
 }
 
-# ------------------------------------------------------------
-#  OpenFileStorage - Opens file storage for reading or writing data
-#  (see Cv::FileStorage)
-# ------------------------------------------------------------
-sub OpenFileStorage {
-	my $self = shift;
-	use Cv::FileStorage;
-	Cv::FileStorage->new(@_);
+sub CaptureFromFlipbook {
+	my $class = shift;
+	Cv::Flipbook->new(@_);
 }
-
-# ------------------------------------------------------------
-#  CreateHist - Creates histogram
-#  (see Cv::Hisutogram)
-# ------------------------------------------------------------
-sub CreateHist {
-	my $self = shift;
-	use Cv::Histogram;
-	Cv::Histogram->new(@_);
-}
-
-# ------------------------------------------------------------
-#  CreateStructuringElementEx - create a structuring element in the
-#  morphological operations
-#  (see Cv::ConvKernel)
-#  ------------------------------------------------------------
-sub CreateStructuringElementEx {
-	my $self = shift;
-	use Cv::ConvKernel;
-	Cv::ConvKernel->new(@_);
-}
-
-# ------------------------------------------------------------
-#  RNG - Initializes random number generator state
-#  (see Cv::RNG)
-# ------------------------------------------------------------
-sub RNG {
-	my $self = shift;
-	use Cv::RNG;
-	Cv::RNG->new(@_);
-}
-
-# ------------------------------------------------------------
-#  InitFont - Initializes font structure
-#  (see Cv::Text)
-# ------------------------------------------------------------
-sub InitFont {
-	my $self = shift;
-	use Cv::Text;
-	Cv::Text->new(@_);
-}
-
-# ------------------------------------------------------------
-#  cvCreateFileCapture - Initializes capturing video from file
-#  cvCreateCameraCapture - Initializes capturing video from camera
-#  (Cv::Capture)
-# ------------------------------------------------------------
-sub CreateFileCapture {
-	my $self = shift;
-	use Cv::Capture;
-	Cv::Capture->CreateFileCapture(@_);
-}
-
-sub CreateCameraCapture {
-    my $self = shift;
-	use Cv::Capture;
-	Cv::Capture->CreateCameraCapture(@_);
-}
-
-# ------------------------------------------------------------
-#  cvCreateBGCodeBookModel - 
-# ------------------------------------------------------------
-sub CreateBGCodeBookModel {
-    my $self = shift;
-	use Cv::BGCodebook;
-	Cv::BGCodebook->new(@_);
-}
-
-# ----------------------------------------------------------------------
-#  CreateKalman - Allocates Kalman filter structure
-# ----------------------------------------------------------------------
-sub CreateKalman {
-	my $self = shift;
-	use Cv::Kalman;
-	Cv::Kalman->new(@_);
-}
-
-# ------------------------------------------------------------
-#  SegmentMotion - Segments whole motion into separate moving parts
-# ------------------------------------------------------------
-sub SegmentMotion {
-	my $self = shift;
-	use Cv::MotionHistory;
-	Cv::MotionHistory->SegmentMotion(@_);
-}
-
-# ------------------------------------------------------------
-#  CreateSubdivDelaunay2D - Creates empty Delaunay triangulation
-# ------------------------------------------------------------
-sub CreateSubdivDelaunay2D {
-	my $self = shift;
-	use Cv::Subdiv2D;
-	Cv::Subdiv2D->CreateDelaunay(@_);
-}
-
-
-sub Subdiv2DEdge {
-	my $self = shift;
-	use Cv::Subdiv2D::Edge;
-	Cv::Subdiv2D::Edge->new(@_);
-}
-
-
-# ------------------------------------------------------------
-#  CreateStereoBMState - Creates block matching stereo correspondence
-#          structure
-# ------------------------------------------------------------
-sub CreateStereoBMState {
-	my $self = shift;
-	use Cv::StereoBMState;
-	Cv::StereoBMState->new(@_);
-}
-
 
 1;
 __END__
+
+=head1 NAME
+
+Cv - helps you to make something around computer vision.
+
+=head1 SYNOPSIS
+
+ use Cv;
+ my $image = Cv->LoadImage("/path/to/image", CV_LOAD_IMAGE_COLOR);
+ $image->ShowImage("image");
+ Cv->WaitKey;
+
+
+=head1 DESCRIPTION
+
+C<Cv> is the Perl interface to the OpenCV computer vision library that
+originally developed by Intel. I'm making this module to use the
+computer vision more easily like a slogan of perl I<"Easy things
+should be easy, hard things should be possible.">
+
+The features are as follows.
+
+=over 4
+
+=item *
+
+C<Cv> was made along the online reference manual of C in the OpenCV
+documentation.  For details, please refer to the
+http://opencv.willowgarage.com/.
+
+=item *
+
+You can use C<CreateSomething()> as a constructors.
+
+ my $img = Cv->CreateImage([ 320, 240 ], IPL_DEPTH_8U, 3);
+ my $mat = Cv->CreateMat([ 240, 320 ], CV_8UC3);
+
+=item *
+
+You can also use C<new> as a constructor. But be careful when you use
+it because the arguments are same as CreateMat().
+
+ my $img = Cv::Image->new([ 240, 320 ], CV_8UC3);
+ my $img2 = $img->new;
+
+=item *
+
+The OpenCV has a type C<IplImage*> for handling an image object, and
+types C<CvMat*>, C<CvMatND*> and C<CvSparseMat*> for a matrix object.
+These types are mapped as blessed reference of C<Cv::Image>,
+C<Cv::Mat>, C<Cv::MatND> and C<Cv::SparseMat>.  The type of structures
+like C<CvSize> and C<CvPoint> are mapped as an array.  For details,
+please refer to the typemap.
+
+=item *
+
+You have to call cvReleaseImage() when you'll destroy the image object
+in the OpenCV application programs.  But in the C<Cv>, you don't have
+to call cvReleaseImage() because Perl calls C<DESTROY> for cleanup.
+So the subroutine C<DESTROY> has often been defined as an alias of
+cvReleaseImage(), cvReleaseMat(), ... and cvReleaseSomething().
+
+Some functions, eg. cvQueryFrame() return a reference but that cannot
+be destroyed. In this case, the reference is blessed with
+C<Cv::Somthing::Ghost>, and identified. And disable destroying.
+
+=item *
+
+You can use name of method, omitting "cv" from the OpenCV function
+name, and also use lowercase name beginning. For example, you can call
+C<cvCreateMat()> as:
+
+ my $mat = Cv->CreateMat(240, 320, CV_8UC3);
+ my $mat = Cv->createMat(240, 320, CV_8UC3);
+
+
+=item *
+
+When you omit the destination image or matrix (often named "dst"),
+C<Cv> creates new destination if possible.
+
+ my $dst = $src->Add($src2);
+
+=item *
+
+Some functions in the OpenCV can handle inplace that use source image
+as destination one.  To tell requesting inplace, you can use C<\0> as
+C<NULL> for the destination.
+
+ my $dst = $src->Flip(\0);
+
+=item *
+
+cvAddS() and cvAdd() are integrated into Add().  Because we can
+identify them.
+
+ my $dst = $src->Add($src2);        # calling cvAdd()
+ my $dst = $src->Add([ 1, 2, 3 ]);  # cvAddS()
+
+C<cvGet1D()> and C<cvGet2D()> are integrated.
+
+ my $val = $src->Get($idx1);        # calling cvGet1D()
+ my $val = $src->Get($idx1, $idx2); # cvGet2D()
+
+=item *
+
+cvFillConvexPoly() handles the array of points C<CvPoint>.  The
+function also needs the number of elements separately.  Because the
+array of the language C is only a pointer to the beginning of it.  In
+the Perl, the array unlike in C, we can know the number of elements.
+So, you don't need to pass the number of elements for
+cvFindCornerSubPix(), cvCreateMatND() and so, too.
+
+
+=item *
+
+cvMinMaxLoc() stores values in given variables.
+
+ $src->MinMaxLoc(my $min, my $max);
+
+In the Perl, you would think that even when multiple values returned
+to the caller might be more natural to use the return value like
+C<localtime> and C<stat>.  But we chose to along the OpenCV
+documentation.
+
+=item *
+
+We have a configuration to use C<Inline C>.  This makes it easy to
+test and extend a variety. How easy is as follows.
+
+ use Cv::Config;
+ use Inline C => Config => %Cv::Config::C;
+
+=back
+
+
+=head1 SAMPLES
+
+We rewrite some OpenCV samples in C<Cv>, and put them in sample/.
+
+ gfg_codebook.pl calibration.pl camshiftdemo.pl capture.pl contours.pl
+ convexhull.pl delaunay.pl demhist.pl dft.pl distrans.pl drawing.pl
+ edge.pl facedetect.pl fback_c.pl ffilldemo.pl find_obj.pl
+ fitellipse.pl houghlines.pl image.pl inpaint.pl kalman.pl kmeans.pl
+ laplace.pl lkdemo.pl minarea.pl morphology.pl motempl.pl
+ mser_sample.pl polar_transforms.pl pyramid_segmentation.pl squares.pl
+ stereo_calib.pl tiehash.pl watershed.pl
 
 =head1 BUGS
 
@@ -649,21 +383,27 @@ __END__
 
 =item *
 
-All functions of OpenCV cannot be used. 
+If you want to use new features of the OpenCV longer continue to
+progress, please add them to the xs.  If you can place xs code in the
+package C<Cv> or C<Cv::Arr>, you don't need to consider about
+adjusting the names, e.g. omitting "cv", lowercase name beginning,
+because C<AUTOLOAD> works in these packages.  In other places, you can
+use C<Cv::aliases>.
 
 =item *
 
-To use, Some functions need modules other than Cv, to use it.
-(Ex. Cv::Seq::Point etc.)
+If you want to use new constants, you can put it package
+C<Cv::Constant>.
 
 =item *
 
-I am still considering of interface of the arguments.  So, these might
-be changed.
+In the version 0.07, we decided to remove keyword parameter.  Because
+of that has large overhead. In this version, we decided to remove
+C<Cv::TieHash> and C<Cv::TieArr>, too.  See C<sample/tiehash.pl>.
 
 =item *
 
-CvCopyHist of OpenCV2.0 cannot return a correct object. 
+On cygwin, it is necessary to compile OpenCV. 
 
 =back
 
@@ -677,7 +417,7 @@ Yuta Masuda, E<lt>yuta.masuda@newdaysys.co.jpE<gt>
 
 =head1 LICENCE
 
-Copyright (c) 2010 by Masuda Yuta.
+Copyright (c) 2010, 2011 by Masuda Yuta.
 
 All rights reserved. This program is free software; you can
 redistribute it and/or modify it under the same terms as Perl itself.

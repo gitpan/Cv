@@ -4,89 +4,65 @@
 use strict;
 use lib qw(blib/lib blib/arch);
 use Cv;
-use Cv::TieArr;
-use List::Util qw(min);
+use List::Util qw(min max);
 
 my $MAX_CLUSTERS = 5;
-my @color_tab = (
-    &CV_RGB(255,   0,   0),
-    &CV_RGB(  0, 255,   0),
-    &CV_RGB(100, 100, 255),
-    &CV_RGB(255,   0, 255),
-    &CV_RGB(255, 255,   0),
+my @colorTab = (
+    CV_RGB(255,   0,   0),
+    CV_RGB(  0, 255,   0),
+    CV_RGB(100, 100, 255),
+    CV_RGB(255,   0, 255),
+    CV_RGB(255, 255,   0),
 	);
 
-my $img = Cv->new(
-	-size => scalar cvSize(500, 500),
-	-depth => 8, -channels => 3);
-my $rng = Cv->RNG;
+my $img = Cv::Image->new([500, 500], CV_8UC3);
+my $rng = Cv->RNG(12345);
 
+Cv->NamedWindow("clusters", 1);
 
-Cv->NamedWindow(-name => "clusters", -flags => 1);
-        
 while (1) {
-	my $cluster_count = $rng->RandInt % $MAX_CLUSTERS + 1;
-	my $sample_count = $rng->RandInt % 1000 + $MAX_CLUSTERS;
-	my $points   = Cv->CreateMat(-rows => $sample_count, -type => CV_32FC2);
-	tie my @points, 'Cv::TieArr', $points;
-	my $clusters = Cv->CreateMat(-rows => $sample_count, -type => CV_32SC1);
-	tie my @clusters, 'Cv::TieArr', $clusters;
+	my $clusterCount = max($rng->RandInt % $MAX_CLUSTERS, 1);
+	my $sampleCount = max($rng->RandInt % 1000, $MAX_CLUSTERS);
+	my $points = Cv::Mat->new([$sampleCount, 1], CV_32FC2);
+	my $clusters = Cv::Mat->new([$sampleCount, 1], CV_32SC1);
 
 	# generate random sample from multigaussian distribution
-	for (my $k = 0; $k < $cluster_count; $k++) {
-		my $point_chunk =
-			Cv->CreateMat(-rows => 1, -cols => 1, -type => CV_32FC2);
-		$points->GetRows(
-			-submat => $point_chunk,
-			-start_row => ($sample_count * $k) / $cluster_count,
-			-end_row => $k == $cluster_count - 1 ?
-				$sample_count :	$sample_count * ($k + 1) / $cluster_count,
-			-delta_row => 1,
+	foreach my $k (0 .. $clusterCount - 1) {
+		my ($startRow, $endRow) = (
+			$sampleCount * ($k + 0) / $clusterCount,
+			$k == $clusterCount - 1 ? $sampleCount :
+			$sampleCount * ($k + 1) / $clusterCount,
 			);
+		my $pointChunk = $points->GetRows($startRow, $endRow);
 		$rng->RandArr(
-			-arr => $point_chunk,
-			-dist_type => &CV_RAND_NORMAL,
-			-param1 => scalar cvScalar(
-				 -x => $rng->RandInt % $img->width,
-				 -y => $rng->RandInt % $img->height,
-			),
-			-param2 => scalar cvScalar(
-				 -x => $img->width * 0.1,
-				 -y => $img->height * 0.1,
-			),
+			$pointChunk, CV_RAND_NORMAL,
+			cvScalar(map { $rng->RandInt % $_ } $img->width, $img->height),
+			cvScalar(map { 0.1 * $_ } $img->width, $img->height),
 			);
-		# print STDERR "point_chunk->refcount = ", $point_chunk->refcount, "\n";
 	}
 
 	# shuffle samples
-	for (my $i = 0; $i < $sample_count / 2; $i++) {
-		my $i1 = $rng->RandInt % $sample_count;
-		my $i2 = $rng->RandInt % $sample_count;
-		($points[$i2][0],
-		 $points[$i1][0]) =	($points[$i1][0],
-							 $points[$i2][0]);
-	}
-	$points->KMeans2(
-		-labels => $clusters,
-		-cluster_count => $cluster_count,
-		-criteria => scalar cvTermCriteria(
-			 -type => &CV_TERMCRIT_EPS | &CV_TERMCRIT_ITER,
-			 -max_iter => 10,
-			 -epsilon => 1.0,
-		));
-	$img->Zero;
-	for (my $i = 0; $i < $sample_count; $i++) {
-		my $cluster_idx = $clusters[$i][0]->[0];
-		$img->Circle(
-			-center => $points[$i][0],
-			-radius => 2,
-			-color => $color_tab[$cluster_idx],
-			-thickness => &CV_FILLED,
-			-line_type => &CV_AA,
-			-shift => 0,
-			);
+	foreach (0 .. $sampleCount / 2 - 1) {
+		my $i = $rng->RandInt % $sampleCount;
+		my $j = $rng->RandInt % $sampleCount;
+		my $x = $points->get([$i, 0]);
+		$points->set([$i, 0], $points->get([$j, 0]));
+		$points->set([$j, 0], $x);
 	}
 
+	$points->KMeans2(
+		$clusterCount, $clusters,
+		cvTermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 10, 1.0),
+		);
+
+	$img->Zero;
+	foreach (0 ..  $sampleCount - 1) {
+		my $clusterIdx = ${$clusters->get([$_, 0])}[0];
+		$img->Circle(
+			$points->get([$_, 0]), 2, $colorTab[$clusterIdx],
+			CV_FILLED, CV_AA, 0,
+			);
+	}
 	$img->ShowImage("clusters");
 
 	my $key = Cv->WaitKey(0);

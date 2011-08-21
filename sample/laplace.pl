@@ -6,57 +6,46 @@ use lib qw(blib/lib blib/arch);
 use Cv;
 use Data::Dumper;
 
-my $capture = undef;
+my $capture;
+my $videoSource;
 if (@ARGV == 0) {
-	$capture = Cv->CreateCameraCapture(0);
+    $capture = Cv::Capture->fromCAM(0);
+    $videoSource = 0;
 } elsif (@ARGV == 1 && $ARGV[0] =~ /^\d$/) {
-	$capture = Cv->CreateCameraCapture($ARGV[0]);
+    $capture = Cv::Capture->fromCAM($ARGV[0]);
+    $videoSource = $ARGV[0];
 } else {
-	$capture = Cv->CreateFileCapture($ARGV[0]);
+    $capture = Cv::Capture->fromFile($ARGV[0]);
+    $videoSource = $ARGV[0];
 }
-$capture or die "Could not initialize capturing...\n";
+$capture or die "can't create capture";
 
-#my $capture = Cv->CreateCameraCapture(0);
-my $size = [$capture->QueryFrame->CloneImage->GetSize];
-my $laplace = Cv->CreateImage( $size, IPL_DEPTH_16S, 1 );
+my $frame = $capture->queryFrame;
+my $laplace = Cv::Image->new(
+	$frame->sizes, Cv::MAKETYPE(&Cv::CV_16S, Cv::MAT_CN($frame->type)));
 
-my $sigma = 3;
 my $smoothType = &CV_GAUSSIAN;
-my $colorlaplace = Cv->CreateImage( $size, 8, 3 );
-my $window = Cv->NamedWindow("Laplacian", 0)
-	->CreateTrackbar( -name => "Sigma", -value => \$sigma, -count => 15 );
+Cv->namedWindow("Laplacian", 0);
+Cv->createTrackbar("Sigma", "Laplacian", my $sigma = 3, 15, sub {});
 
 for (;;) {
-	my $frame = $capture->QueryFrame->CloneImage;
-	last unless ($frame);
+	last unless my $frame = $capture->query->mirror(\0, 1);
 
 	my $ksize = ($sigma * 5) | 1;
-	$colorlaplace = $frame->Smooth( -smoothtype => $smoothType,
-									-size1 => $ksize, -size2 => $ksize,
-									-sigma1 => $sigma, -sigma2 => $sigma );
-	my @planes = (
-		$colorlaplace->new(-channels => 1),
-		$colorlaplace->new(-channels => 1),
-		$colorlaplace->new(-channels => 1),
-		);
-	$colorlaplace->Split(-dst => \@planes);
-	for (0..2) {
-		$planes[$_]->Laplace( -dst => $laplace, -aperture_size => 5 );
-		$laplace->ConvertScaleAbs( -dst => $planes[$_],
-								   -scale => ($sigma+1)*0.25,
-								   -shift => 0 );
-	}
-	$colorlaplace->Merge( -src => \@planes );
+	my $colorlaplace = $frame->smooth(
+		$frame->new, $smoothType, $ksize, $ksize, $sigma, $sigma);
+	$colorlaplace->laplace($laplace, 5)
+		->convertScaleAbs($colorlaplace, ($sigma + 1) * 0.25, 0)
+		->show("Laplacian");
 
-	$window->ShowImage($colorlaplace);
-
-	my $c = Cv->WaitKey(30);
-	if (chr($c) eq ' ') {
-		$smoothType = $smoothType == &CV_GAUSSIAN
-			? &CV_BLUR : $smoothType == &CV_BLUR
-			? &CV_MEDIAN : &CV_GAUSSIAN;
+	my $c = Cv->waitKey(30);
+	$c &= 0xffff if $c >= 0;
+	if ($c == ord(' ')) {
+		$smoothType =
+			$smoothType == &CV_GAUSSIAN ? &CV_BLUR :
+			$smoothType == &CV_BLUR ? &CV_MEDIAN : &CV_GAUSSIAN;
 	}
-	last if (chr($c) eq 'q' || chr($c) eq 'Q' || ($c & 255) == 27);
+	last if $c == ord('q') || $c == ord('Q') || $c == 27;
 }
 
 exit;
