@@ -13,6 +13,7 @@ use Test::More qw(no_plan);
 
 BEGIN {
 	use_ok('Cv');
+	exit 0 unless eval('use Cv::Config');
 }
 
 use File::Basename;

@@ -8,7 +8,7 @@
 
 use Test::More qw(no_plan);
 #use Test::More tests => 35;
-use Test::Output;
+# use Test::Output;
 BEGIN {
 	use_ok('Cv');
 }

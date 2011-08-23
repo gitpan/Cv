@@ -57,6 +57,7 @@ WriteMakefile(
 		List::Util => 0,
 		Time::HiRes => 0,
 		Cwd => 0,
+		ExtUtils::PkgConfig => 0,
 	}, # e.g., Module::Name => 1.1
 	($] >= 5.005 ?     ## Add these new keywords supported since 5.005
 	 (ABSTRACT_FROM => 'lib/Cv.pm', # retrieve abstract from module

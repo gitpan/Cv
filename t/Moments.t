@@ -34,7 +34,7 @@ foreach my $i (0..10) {
 	&print_moment($affine);
 	if ($verbose) {
 		$affine->ShowImage;
-		Cv->WaitKey(500);
+		Cv->WaitKey(50);
 	}
 }
 
@@ -46,7 +46,7 @@ foreach my $i (0..10) {
 	&print_moment($affine);
 	if ($verbose) {
 		$affine->ShowImage;
-		Cv->WaitKey(500);
+		Cv->WaitKey(50);
 	}
 }
 
@@ -58,7 +58,7 @@ foreach my $i (0..10) {
 	&print_moment($affine);
 	if ($verbose) {
 		$affine->ShowImage;
-		Cv->WaitKey(500);
+		Cv->WaitKey(50);
 	}
 }
 

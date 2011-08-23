@@ -1,5 +1,9 @@
 Revision history for Cv.pm
 
+0.08 - 2011-08-23
+
+	* lib/Cv/Nihongo.pod: Added command paragraph "=encoding utf8"
+
 0.07 - 2011-08-17
 
 	* tested OpenCV 2.2.0 and 2.3.0 
