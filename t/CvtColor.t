@@ -19,8 +19,8 @@ use File::Basename;
 my $lena = dirname($0) . "/lena.jpg";
 my $verbose = Cv->hasGUI;
 
-if (0) {
-	my $image = Cv->load($lena, CV_LOAD_IMAGE_COLOR);
+if (1) {
+	my $image = Cv->loadImage($lena, CV_LOAD_IMAGE_COLOR);
 	isa_ok($image, 'Cv::Image');
 	if ($verbose) {
 		$image->show($lena);
@@ -56,8 +56,8 @@ if (0) {
 	}
 }
 
-if (0) {
-	my $image = Cv->load($lena, CV_LOAD_IMAGE_COLOR);
+if (1) {
+	my $image = Cv->loadImage($lena, CV_LOAD_IMAGE_COLOR);
 	isa_ok($image, 'Cv::Image');
 	my $gray = $image->cvtColor(
 		$image->new($image->sizes, CV_8UC1), CV_BGR2GRAY,

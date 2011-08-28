@@ -3628,6 +3628,8 @@ cvWriteFrame(CvVideoWriter* writer, const IplImage* image)
 MODULE = Cv		PACKAGE = Cv
 # ====================
 
+#if WITH_QT
+
 #if CV_MAJOR_VERSION >= 2
 
 void
@@ -3673,6 +3675,8 @@ cvLoadWindowParameters(const char* name)
 #TBD# int cvCreateButton(const char* button_name=NULL, CvButtonCallback on_change = NULL, void* userdata = NULL, int button_type = CV_PUSH_BUTTON, int initial_button_state = 0)
 
 #endif
+
+#endif /* WITH_QT */
 
 
 # ============================================================

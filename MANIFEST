@@ -7,10 +7,12 @@ lib/Cv/Arr.pm
 lib/Cv/BGCodeBookModel.pm
 lib/Cv/Capture.pm
 lib/Cv/ChildMemStorage.pm
+lib/Cv/Config.pm
 lib/Cv/Constant.pm
 lib/Cv/Contour.pm
 lib/Cv/ConvKernel.pm
 lib/Cv/FileStorage.pm
+lib/Cv/Flipbook.pm
 lib/Cv/Font.pm
 lib/Cv/Graph.pm
 lib/Cv/GraphScanner.pm
@@ -45,6 +47,7 @@ MANIFEST			This list of files
 MANIFEST.SKIP
 ppport.h
 README
+sample/adjustcliper.pl
 sample/baboon.jpg
 sample/bgfg_codebook.pl
 sample/box.png
@@ -68,6 +71,7 @@ sample/fback_c.pl
 sample/ffilldemo.pl
 sample/find_obj.pl
 sample/fitellipse.pl
+sample/flipbook.pl
 sample/fruits.jpg
 sample/helper.pl
 sample/houghlines-prob.pl
@@ -164,7 +168,6 @@ t/Sum.t
 t/Threshold.t
 t/Trackbar.t
 test.sh
-xlib/config.pl
 xlib/Makefile.PL
 xlib/pack-CvBox2D.c
 xlib/pack-CvConnectedComp.c

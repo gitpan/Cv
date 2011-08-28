@@ -16,6 +16,10 @@ extern "C" {
 /* #define NEED_sv_2pv_nolen */
 #include "ppport.h"
 
+/* remove confincting macros */
+#undef do_open
+#undef do_close
+
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #ifdef __cplusplus

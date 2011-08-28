@@ -1,27 +1,6 @@
 /* -*- mode: C; coding: utf-8; tab-width: 4 -*- */
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "EXTERN.h"
-#include "perl.h"
-#include "XSUB.h"
-#ifdef __cplusplus
-}
-#endif
 
-/* #define NEED_sv_2pv_nolen */
-#include "ppport.h"
-
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
-#ifdef __cplusplus
-#include <opencv/cvaux.h>
-#ifdef __OPENCV_OLD_CV_H__
-#include "opencv2/opencv.hpp"
-#endif
-#endif
-
-#include "typemap.h"
+#include "xlib/xs.h"
 
 #define DIM(x) (sizeof(x)/sizeof((x)[0]))
 
@@ -154,37 +133,6 @@ CvErrorCallback make_perl_cb_CvErrorCallback(SV *callback)
 	}
 	return (CvErrorCallback)0;
 }
-
-#if 0
-static SV* newArr(SV* arr)
-{
-    SvGETMAGIC(arr);
-    if (!(SvROK(arr) && SvOBJECT(SvRV(arr))))
-		return &PL_sv_undef;
-	char* classname = (char*)sv_reftype(SvRV(arr), TRUE);
-	char* newarr = (char*)alloca(strlen(classname) + 2 + 3 + 1);
-	strcpy(newarr, classname);
-	strcat(newarr, "::new");
-	fprintf(stderr, "calling %s\n", newarr);
-	dSP;
-	ENTER;
-	SAVETMPS;
-	PUSHMARK(SP);
-	XPUSHs(arr);
-	PUTBACK;
-	int count = call_pv(newarr, G_SCALAR);
-	SPAGAIN;
-	SV* sv = &PL_sv_undef;
-	if (!SvTRUE(ERRSV) && count == 1) {
-		sv = POPs;
-		SvREFCNT_inc(sv);
-	}
-	PUTBACK;
-	FREETMPS;
-	LEAVE;
-	return sv;
-}
-#endif
 
 int
 elemtype2ipldepth(int elemtype)

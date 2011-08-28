@@ -13,7 +13,6 @@ use Test::More qw(no_plan);
 
 BEGIN {
 	use_ok('Cv');
-	exit 0 unless eval('use Cv::Config');
 }
 
 use File::Basename;
@@ -30,7 +29,10 @@ if ($verbose) {
 	Cv->waitKey(1000);
 }
 
-use Cv::Config;
+BEGIN {
+	die "$0: can't use Inline C.\n" if $^O eq 'cygwin';
+	use_ok('Cv::Config');
+}
 use Inline C => Config => %Cv::Config::C;
 use Inline C => << '----';
 #include <opencv/cv.h>

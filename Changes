@@ -1,8 +1,9 @@
 Revision history for Cv.pm
 
-0.08 - 2011-08-23
+0.09 - 2011-08-25
 
-	* lib/Cv/Nihongo.pod: Added command paragraph "=encoding utf8"
+	* fixed tersters report 0.08
+	  - Can't locate Cv/Config.pm in @INC
 
 0.07 - 2011-08-17
 

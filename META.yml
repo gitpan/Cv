@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Cv
-version:            0.08
+version:            0.09
 abstract:           helps you to make something around computer vision.
 author:
     - MASUDA Yuta <yuta.masuda@newdaysys.co.jp>

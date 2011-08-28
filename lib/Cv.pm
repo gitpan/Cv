@@ -8,7 +8,7 @@ use warnings;
 use Carp;
 use Scalar::Util qw(blessed);
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 require XSLoader;
 XSLoader::load('Cv', $VERSION);
@@ -16,16 +16,16 @@ XSLoader::load('Cv', $VERSION);
 sub assoc {
 	my $family = shift;
 	my $short = shift;
+	my @names;
 	if ($short =~ /^[a-z]/) {
 		(my $caps = $short) =~ s/^[a-z]/\U$&/;
 		(my $upper = $short) =~ s/^[a-z]+/\U$&/;
-		foreach ($caps, "cv$caps", $upper, "cv$upper") {
-			return join('::', $family, $_) if $family->can($_);
-		}
+		@names = ($caps, "cv$caps", $upper, "cv$upper");
 	} else {
-		foreach ("cv$short") {
-			return join('::', $family, $_) if $family->can($_);
-		}
+		@names = ("cv$short");
+	}
+	foreach (@names) {
+		return join('::', $family, $_) if $family->can($_);
 	}
 	return undef;
 }
@@ -55,14 +55,13 @@ sub alias {
 }
 
 sub aliases {
-	my ($family, $filename, $line, $subr, $has_args, $wantarray,
-		$evaltext, $is_require, $hints, $hitmask) = caller(0);
+	my ($family) = caller(0);
 	for (@_) {
 		my $real = shift(@$_);
 		my $assoc = $real;
 		$assoc =~ s/.*:://;
 		$assoc =~ s/^cv//;
-		unshift(@$_, $assoc) if ($assoc);
+		unshift(@$_, $assoc) if $assoc;
 		alias($family, $real, $_) for @$_;
 	}
 }
@@ -135,7 +134,6 @@ sub AUTOLOAD {
 		if ($real =~ /::cv/) {
 			*$AUTOLOAD = sub {
 				shift unless defined $_[0] && ref $_[0] && blessed $_[0];
-				# &$real(@_);
 				goto &$real;
 			};
 		} else {
@@ -157,26 +155,24 @@ sub AUTOLOAD {
 # Preloaded methods go here.
 
 sub HasGUI {
-	if (fork) {
-		wait;
-		$? == 0;
+	return 0 unless defined $ENV{DISPLAY};
+	if ($^O eq 'cygwin') {
+		1;
 	} else {
-		open(STDERR, ">/dev/null");
-		cvNamedWindow('Cv');
-		cvDestroyWindow('Cv');
-		exit(0);
+		if (fork) {
+			wait;
+			$? == 0;
+		} else {
+			open(STDERR, ">/dev/null");
+			cvNamedWindow('Cv');
+			cvDestroyWindow('Cv');
+			exit(0);
+		}
 	}
 }
 
 sub HasQt {
-	if (fork) {
-		wait;
-		$? == 0;
-	} else {
-		open(STDERR, ">/dev/null");
-		cvFontQt('Times');
-		exit(0);
-	}
+	Cv->can('cvFontQt');
 }
 
 sub FitEllipse {

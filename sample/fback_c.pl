@@ -60,6 +60,9 @@ while (1) {
 }
 
 
+BEGIN {
+	die "$0: can't use Inline C.\n" if $^O eq 'cygwin';
+}
 use Cv::Config;
 use Inline C => Config => %Cv::Config::C;
 use Inline C => << '----';

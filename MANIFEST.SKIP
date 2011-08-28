@@ -11,7 +11,6 @@ Makefile$
 \.tmp$
 ^t.old
 ^_Inline/
-Config\.pm
 \.o$
 \.a$
 [~\#]$
