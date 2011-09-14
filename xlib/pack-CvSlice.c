@@ -8,6 +8,5 @@ void XS_pack_CvSlice(SV* arg, CvSlice var)
 	AV* av = newAV();
 	av_push(av, newSViv(var.start_index));
 	av_push(av, newSViv(var.end_index));
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

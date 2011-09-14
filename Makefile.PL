@@ -6,6 +6,7 @@ my %with = (QT => 0);
 
 use lib "./lib";
 use Cv::Config;
+use Cv::Constant;
 
 my $cf = new Cv::Config;
 
@@ -22,16 +23,14 @@ my $cf = new Cv::Config;
 		}
 		return "";
 	};
-	use Cv::Constant;
 	my %names = map { $_ => 1 } map { @{ $Cv::Constant::EXPORT_TAGS{$_} } }
 		grep { $_ <= $cf->version } keys %Cv::Constant::EXPORT_TAGS;
 	ExtUtils::Constant::WriteConstants(
 		NAME => 'Cv', NAMES => [ keys %names ], DEFAULT_TYPE => 'IV',
 		);
 }
-	
+
 my @perl_h = qw(perl.h sv.h pp.h);
-my @parl_h_patched = ();
 
 {
 	use Config;
@@ -42,12 +41,11 @@ my @parl_h_patched = ();
 			open(PHO, ">$patched");
 			while (<PHI>) {
 				s/\bstruct\s+cv\b/struct STRUCT_CV/g;
-				s/\bNORMAL\b/pl_NORMAL/g;
+				s/\bNORMAL\b/Perl_NORMAL/g;
 				print PHO;
 			}
 			close PHO;
 			close PHI;
-			push(@parl_h_patched, $patched);
 		}
 	}
 }
@@ -61,13 +59,12 @@ WriteMakefile(
 		File::Basename => 0,
 		List::Util => 0,
 		Time::HiRes => 0,
-		ExtUtils::PkgConfig => 0,
+		ExtUtils::PkgConfig => 1.12,
 		Cwd => 0,
-	}, # e.g., Module::Name => 1.1
-	($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-	 (ABSTRACT_FROM => "lib/Cv.pm", # retrieve abstract from module
-	  AUTHOR => 'MASUDA Yuta <yuta.masuda@newdaysys.co.jp>') : ()),
-	LIBS => $cf->libs, # e.g., '-lm'
+	},
+	ABSTRACT_FROM => "lib/Cv.pm",
+	AUTHOR => 'MASUDA Yuta <yuta.masuda@newdaysys.co.jp>',
+	LIBS => $cf->libs,
 	CC => $cf->cc,
 	LD => $cf->cc,
 	XSOPT => '-C++ -hiertype',
@@ -76,7 +73,7 @@ WriteMakefile(
     DEFINE => join(' ', map { "-DWITH_$_=$with{$_}" } keys %with),
 	MYEXTLIB => 'xlib/libxs$(LIB_EXT)',
 	dynamic_lib => $cf->dynamic_lib,
-	INC => "-I.",		# e.g., '-I. -I/usr/include/other'
+	INC => "-I.",
 	clean => {
 		FILES => [
 			'const-c.inc', 'const-xs.inc',

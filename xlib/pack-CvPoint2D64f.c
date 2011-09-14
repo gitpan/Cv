@@ -8,6 +8,5 @@ void XS_pack_CvPoint2D64f(SV* arg, CvPoint2D64f var)
 	AV *av = newAV();
 	av_push(av, newSVnv(var.x));
 	av_push(av, newSVnv(var.y));
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

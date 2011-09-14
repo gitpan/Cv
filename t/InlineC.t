@@ -8,13 +8,15 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use strict;
-use Test::More qw(no_plan);
-# use Test::More tests => 10;
+use Test::More;
+BEGIN {
+	plan skip_all => "Inline is required" unless eval "use Inline; 1";
+	plan tests => 5;
+}
 
 BEGIN {
 	use_ok('Cv');
 }
-
 use File::Basename;
 my $lena = dirname($0) . "/lena.jpg";
 my $verbose = Cv->hasGUI;

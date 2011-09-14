@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Cv
-version:            0.09
+version:            0.10
 abstract:           helps you to make something around computer vision.
 author:
     - MASUDA Yuta <yuta.masuda@newdaysys.co.jp>
@@ -13,7 +13,7 @@ build_requires:
 requires:
     Cwd:                  0
     Data::Dumper:         0
-    ExtUtils::PkgConfig:  0
+    ExtUtils::PkgConfig:  1.12
     File::Basename:       0
     List::Util:           0
     Scalar::Util:         0

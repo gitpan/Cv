@@ -47,7 +47,6 @@ MANIFEST			This list of files
 MANIFEST.SKIP
 ppport.h
 README
-sample/adjustcliper.pl
 sample/baboon.jpg
 sample/bgfg_codebook.pl
 sample/box.png

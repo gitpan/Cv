@@ -15,6 +15,5 @@ void XS_pack_CvBox2D(SV* arg, CvBox2D var)
 	av_push(av_size, newSVnv(var.size.height));
 	av_push(av, newRV_inc(sv_2mortal((SV*)av_size)));
 	av_push(av, newSVnv(var.angle));
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

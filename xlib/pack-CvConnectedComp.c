@@ -20,6 +20,5 @@ void XS_pack_CvConnectedComp(SV* arg, CvConnectedComp var)
 	av_push(av_rect, newSViv(var.rect.height));
 	av_push(av, newRV_inc(sv_2mortal((SV*)av_rect)));
 	av_push(av, newSViv((IV)var.contour));
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

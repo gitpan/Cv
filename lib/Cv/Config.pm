@@ -3,7 +3,6 @@ package Cv::Config;
 
 use strict;
 use Cwd qw(abs_path);
-use ExtUtils::PkgConfig;
 
 our %opencv;
 our %C;
@@ -228,7 +227,17 @@ sub c {
 
 
 BEGIN {
-	%opencv = ExtUtils::PkgConfig->find('opencv');
+	eval("use ExtUtils::PkgConfig");
+	if ($@) {
+		foreach my $key (qw(cflags libs)) {
+			eval {
+				chop(my $value = `pkg-config opencv --$key`);
+				$opencv{$key} = $value;
+			};
+		}
+	} else {
+		%opencv = ExtUtils::PkgConfig->find('opencv');
+	}
 	$cf = &new;
 	%C = $cf->c;
 }

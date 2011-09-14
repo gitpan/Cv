@@ -15,6 +15,5 @@ void XS_pack_CvSubdiv2DPoint(SV* arg, CvSubdiv2DPoint var)
 #if CV_MAJOR_VERSION == 2
     av_push(av, newSViv(var.id));
 #endif
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

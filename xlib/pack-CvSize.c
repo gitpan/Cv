@@ -8,6 +8,5 @@ void XS_pack_CvSize(SV* arg, CvSize var)
 	AV* av = newAV();
 	av_push(av, newSViv(var.width));
 	av_push(av, newSViv(var.height));
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

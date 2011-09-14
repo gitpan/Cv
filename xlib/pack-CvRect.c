@@ -10,6 +10,5 @@ void XS_pack_CvRect(SV* arg, CvRect var)
 	av_push(av, newSViv(var.y));
 	av_push(av, newSViv(var.width));
 	av_push(av, newSViv(var.height));
-	//sv_setsv(arg, newRV_inc((SV*)av));
 	sv_setsv(arg, sv_2mortal(newRV_inc(sv_2mortal((SV*)av))));
 }

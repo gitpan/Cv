@@ -93,7 +93,7 @@ Refetch the stack pointer.  Used after a callback.  See L<perlcall>.
 
 #define dTARG SV *targ
 
-#define pl_NORMAL PL_op->op_next
+#define Perl_NORMAL PL_op->op_next
 #define DIE return Perl_die
 #ifndef PERL_CORE
 #  define DIE_NULL return DieNull
@@ -129,9 +129,9 @@ Pops a long off the stack.
 */
 
 #define PUTBACK		PL_stack_sp = sp
-#define RETURN		return (PUTBACK, pl_NORMAL)
+#define RETURN		return (PUTBACK, Perl_NORMAL)
 #define RETURNOP(o)	return (PUTBACK, o)
-#define RETURNX(x)	return (x, PUTBACK, pl_NORMAL)
+#define RETURNX(x)	return (x, PUTBACK, Perl_NORMAL)
 
 #define POPs		(*sp--)
 #define POPp		(SvPVx(POPs, PL_na))		/* deprecated */

@@ -1,5 +1,10 @@
 Revision history for Cv.pm
 
+0.10 - 2011-08-30
+
+	* fixed tersters report 0.09
+	  - Can't locate ExtUtils/PkgConfig.pm in @INC
+
 0.09 - 2011-08-25
 
 	* fixed tersters report 0.08
