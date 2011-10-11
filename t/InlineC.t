@@ -25,7 +25,7 @@ my $img1 = myload($lena);
 my $sum1 = $img1->Sum;
 my $img2 = Cv->LoadImage($lena);
 my $sum2 = $img2->Sum;
-is($sum1->[$_], $sum2->[$_]) for 0 .. $img1->channels - 1;
+is($sum1->[$_], $sum2->[$_], "ch#$_") for 0 .. $img1->channels - 1;
 if ($verbose) {
 	$img1->show('Inline C');
 	Cv->waitKey(1000);
@@ -42,6 +42,6 @@ use Inline C => << '----';
 #include "typemap.h"
 IplImage* myload(const char* name)
 {
-	return cvLoadImage(name);
+	return cvLoadImage(name, CV_LOAD_IMAGE_COLOR);
 }
 ----

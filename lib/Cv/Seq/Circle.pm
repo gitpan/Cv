@@ -1,6 +1,6 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-package Cv::Seq::Point;
+package Cv::Seq::Circle;
 
 use 5.008008;
 use strict;
@@ -15,11 +15,6 @@ BEGIN {
 	Cv::aliases(
 		[ 'cvGetSeqElem', 'Get' ],
 		);
-}
-
-sub new {
-	my ($class, $flags, $stor) = @_;
-	bless Cv::cvCreateSeq($flags, &Cv::Sizeof::CvSeq, &Cv::Sizeof::CvPoint, $stor);
 }
 
 1;

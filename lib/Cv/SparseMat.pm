@@ -18,7 +18,7 @@ BEGIN {
 
 sub new {
 	my $self = shift;
-	my $sizes = @_? shift : $self->sizes;
+	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : $self->sizes;
 	my $type = @_? shift : $self->type;
 	Cv::cvCreateSparseMat($sizes, $type);
 }

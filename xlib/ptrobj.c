@@ -3,7 +3,7 @@
 #include "xs.h"
 
 /* T_PTROBJ_EX (CvXXX*) for INPUT: */
-int XS_ptrobj(SV* arg, const char* obj)
+IV XS_ptrobj(SV* arg, const char* obj)
 {
     if (SvROK(arg) && SvIOK(SvRV(arg)) && SvIV(SvRV(arg)) == 0)
         return 0;

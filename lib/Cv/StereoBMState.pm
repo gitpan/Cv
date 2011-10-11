@@ -9,10 +9,9 @@ use warnings;
 BEGIN {
 	Cv::aliases(
 		[ 'Cv::CreateStereoBMState', 'new' ],
-		[ 'cvFindStereoCorrespondenceBM' ],
+		[ 'cvFindStereoCorrespondenceBM', 'FindStereoCorrespondence', 'FindCorrespondence' ],
 		);
 }
-
 
 1;
 __END__

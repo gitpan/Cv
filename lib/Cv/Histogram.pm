@@ -17,6 +17,7 @@ BEGIN {
 		[ 'cvNormalizeHist', 'Normalize' ],
 		[ 'cvSetHistBinRanges', 'SetBinRanges' ],
 		[ 'cvThreshHist', 'Thresh' ],
+		[ 'GetHistValue' ],
 		[ 'QueryHistValue' ],
 		);
 }
@@ -49,6 +50,26 @@ sub QueryHistValue {
 	} else {
 		@_ = ($self, \@_);
 		goto &cvQueryHistValue_nD;
+	}
+}
+
+sub GetHistValue {
+	my $self = shift;
+	if (ref $_[0] eq 'ARRAY') {
+		unshift(@_, $self);
+		goto &cvGetHistValue_nD;
+	} elsif (@_ == 1) {
+		unshift(@_, $self);
+		goto &cvGetHistValue_1D;
+	} elsif (@_ == 2) {
+		unshift(@_, $self);
+		goto &cvGetHistValue_2D;
+	} elsif (@_ == 3) {
+		unshift(@_, $self);
+		goto &cvGetHistValue_3D;
+	} else {
+		@_ = ($self, \@_);
+		goto &cvGetHistValue_nD;
 	}
 }
 

@@ -27,7 +27,7 @@ BEGIN {
 
 sub new {
 	my $self = shift;
-	my $sizes = @_? shift : $self->sizes;
+	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : $self->sizes;
 	my $type = @_? shift : $self->type;
 	my ($channels, $depth) = (&Cv::MAT_CN($type), &Cv::IPL_DEPTH($type));
 	croak "usage: Cv::Image->new(sizes, type)" unless defined $depth;

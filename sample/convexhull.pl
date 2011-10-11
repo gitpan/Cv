@@ -35,7 +35,6 @@ while (1) {
 	my $hull;
 	if (!$ARRAY) {
 		$hull = $p->ConvexHull2;
-		bless $hull, 'Cv::Seq::Point';
 	} else {
 		$hull = Cv::Mat->new([ 1, $count ], CV_32SC1);
         $p->ConvexHull2($hull);
@@ -46,8 +45,7 @@ while (1) {
 		my $pt;
 		if (!$ARRAY) {
 			# $pt = $p->GetSeqElem($_);
-			# $pt = $p->Get($_);
-			$pt = $p->GetPoint($_);
+			$pt = $p->Get($_);
 		} else {
 			$pt = $p->Get([0, $_]);
 		}
@@ -58,8 +56,7 @@ while (1) {
 	my @pts = map {
 		if (!$ARRAY) {
 			# $hull->GetSeqElem($_);
-			# $hull->Get($_);
-			$hull->GetPoint($_);
+			$hull->Get($_);
 		} else {
 			[ @{$p->Get(${$hull->Get([0, $_])}[0])}[0..1] ];
 		}

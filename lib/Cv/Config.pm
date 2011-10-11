@@ -7,6 +7,7 @@ use Cwd qw(abs_path);
 our %opencv;
 our %C;
 our $cf;
+our $verbose = 0;
 
 sub new {
 	$cf ||= bless {};
@@ -23,21 +24,6 @@ sub uniq {
 		}
 	}
 	@list;
-}
-
-sub which {
-	my @PATH = split(':', $ENV{PATH});
-	my @found = ();
-	for my $f (@_) {
-		for my $d (@PATH) {
-			my $g = "$d/$f";
-			$g =~ s{[ ()]}{\\$&}g;
-			$g .= '.exe' if $^O eq 'cygwin';
-			push(@found, grep { -x $_ } glob("$g"));
-			return @found if @found;
-		}
-	}
-	@found;
 }
 
 sub cvdir {
@@ -74,10 +60,7 @@ sub typemaps {
 sub cc {
 	my $self = shift;
 	unless (defined $self->{CC}) {
-		unless ($self->{CC} = $ENV{CXX} || $ENV{CC}) {
-			my @cc = which(qw(g++4? g++4 g++-4? g++-4 g++ c++));
-			$self->{CC} = shift(@cc);
-		}
+		$self->{CC} = $ENV{CXX} || $ENV{CC} || 'c++';
 	}
 	$self->{CC};
 }
@@ -154,15 +137,10 @@ sub version {
 		return $self->{version} = Cv::cvVersion()
 			if Cv->can('cvVersion');
 		my $c = "/tmp/version$$.c";
-		# warn "Compiling $c to get Cv version.\n";
+		warn "Compiling $c to get Cv version.\n"  if $verbose;
 		my $CC = $self->cc;
 		my $CCFLAGS = $self->ccflags;
-		my $LIBS = '';
-		if ($^O eq 'cygwin') {
-			if (my $libs = $self->libs) {
-				$LIBS = join(' ', @{$self->libs});
-			}
-		}
+		my $LIBS = join(' ', @{$self->libs});
 		if (open C, ">$c") {
 			print C <<"----";
 #include <stdio.h>
@@ -176,7 +154,7 @@ main() {
 ----
 	;
 			close C;
-			# warn "$CC $CCFLAGS -o a.exe $c $LIBS\n";
+			warn "$CC $CCFLAGS -o a.exe $c $LIBS\n" if $verbose;
 			chop(my $v = `$CC $CCFLAGS -o a.exe $c $LIBS && ./a.exe`);
 			if ($v =~ /^\d+\.\d+/) {
 				$self->{version} = $& + 0;

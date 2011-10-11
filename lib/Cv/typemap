@@ -2,142 +2,143 @@
 
 ##################################################
 TYPEMAP
-CvArr*				T_PTROBJ_EX
-const CvArr*		T_PTROBJ_EX
-CvArr**				T_AVREF_EX
-const CvArr**		T_AVREF_EX
+CvArr*				T_PTROBJ_CV
+const CvArr*		T_PTROBJ_CV
+CvArr**				T_AVREF_CV
+const CvArr**		T_AVREF_CV
 CvAttrList				T_OPAQUE
 CvAttrList*				T_PTRREF
-CvBGCodeBookModel*	T_PTROBJ_EX
-const CvBGCodeBookModel*	T_PTROBJ_EX
+CvBGCodeBookModel*	T_PTROBJ_CV
+const CvBGCodeBookModel*	T_PTROBJ_CV
 CvBox2D				T_PACKED
-CvCapture*			T_PTROBJ_EX
-CvConDensation*		T_PTROBJ_EX
-#CvConnectedComp*	T_PTROBJ_EX
+CvCapture*			T_PTROBJ_CV
+CvCircle			T_PACKED
+CvConDensation*		T_PTROBJ_CV
+#CvConnectedComp*	T_PTROBJ_CV
 CvConnectedComp		T_PACKED
-CvContour*			T_PTROBJ_EX
-CvContourTree*		T_PTROBJ_EX
-const CvContourTree* T_PTROBJ_EX
-CvChain*			T_PTROBJ_EX
-CvChainPtReader*	T_PTROBJ_EX
+CvContour*			T_PTROBJ_CV
+CvContourTree*		T_PTROBJ_CV
+const CvContourTree* T_PTROBJ_CV
+CvChain*			T_PTROBJ_CV
+CvChainPtReader*	T_PTROBJ_CV
 CvErrorCallback		T_CALLBACK
-CvFileNode*			T_PTROBJ_EX
-const CvFileNode*	T_PTROBJ_EX
-CvFileStorage*		T_PTROBJ_EX
-const CvFileStorage* T_PTROBJ_EX
-CvFont*				T_PTROBJ_EX
-const CvFont*		T_PTROBJ_EX
-CvGraph*			T_PTROBJ_EX
-const CvGraph*		T_PTROBJ_EX
-CvGraphEdge*		T_PTROBJ_EX
-const CvGraphEdge*	T_PTROBJ_EX
-#CvGraphEdge**		T_AVREF_EXX
-CvGraphScanner*		T_PTROBJ_EX
-const CvGraphScanner* T_PTROBJ_EX
-CvGraphVtx*			T_PTROBJ_EX
-const CvGraphVtx*	T_PTROBJ_EX
-CvHaarClassifierCascade*		T_PTROBJ_EX
-CvHistogram*		T_PTROBJ_EX
-const CvHistogram*	T_PTROBJ_EX
-CvHuMoments*		T_PTROBJ_EX
-const CvHuMoments*	T_PTROBJ_EX
-CvKalman*			T_PTROBJ_EX
-const CvKalman*		T_PTROBJ_EX
-CvMat*				T_PTROBJ_EX
-const CvMat*		T_PTROBJ_EX
-CvMatND*			T_PTROBJ_EX
-const CvMatND*		T_PTROBJ_EX
-CvMemBlock*			T_PTROBJ_EX
-const CvMemBlock*	T_PTROBJ_EX
-CvMemStorage*		T_PTROBJ_EX
-const CvMemStorage*	T_PTROBJ_EX
+CvFileNode*			T_PTROBJ_CV
+const CvFileNode*	T_PTROBJ_CV
+CvFileStorage*		T_PTROBJ_CV
+const CvFileStorage* T_PTROBJ_CV
+CvFont*				T_PTROBJ_CV
+const CvFont*		T_PTROBJ_CV
+CvGraph*			T_PTROBJ_CV
+const CvGraph*		T_PTROBJ_CV
+CvGraphEdge*		T_PTROBJ_CV
+const CvGraphEdge*	T_PTROBJ_CV
+#CvGraphEdge**		T_AVREF_CVX
+CvGraphScanner*		T_PTROBJ_CV
+const CvGraphScanner* T_PTROBJ_CV
+CvGraphVtx*			T_PTROBJ_CV
+const CvGraphVtx*	T_PTROBJ_CV
+CvHaarClassifierCascade*		T_PTROBJ_CV
+CvHistogram*		T_PTROBJ_CV
+const CvHistogram*	T_PTROBJ_CV
+CvHuMoments*		T_PTROBJ_CV
+const CvHuMoments*	T_PTROBJ_CV
+CvKalman*			T_PTROBJ_CV
+const CvKalman*		T_PTROBJ_CV
+CvMat*				T_PTROBJ_CV
+const CvMat*		T_PTROBJ_CV
+CvMatND*			T_PTROBJ_CV
+const CvMatND*		T_PTROBJ_CV
+CvMemBlock*			T_PTROBJ_CV
+const CvMemBlock*	T_PTROBJ_CV
+CvMemStorage*		T_PTROBJ_CV
+const CvMemStorage*	T_PTROBJ_CV
 CvMemStoragePos		T_PACKED
 CvMemStoragePos*	T_PACKED
 const CvMemStoragePos*	T_PACKED
-CvMoments*			T_PTROBJ_EX
-const CvMoments*	T_PTROBJ_EX
+CvMoments*			T_PTROBJ_CV
+const CvMoments*	T_PTROBJ_CV
 CvMouseCallback		T_CALLBACK
 CvMSERParams		T_PACKED
 CvNextEdgeType		T_UV
 CvPoint				T_PACKED
-CvPoint*			T_AVREF_EX
-CvPoint**			T_AVREF_EXX
+CvPoint*			T_AVREF_CV
+CvPoint**			T_AVREF_CVX
 CvPoint2D32f		T_PACKED
 CvPoint2D64f		T_PACKED
-CvPoint2D32f*		T_AVREF_EX
-const CvPoint2D32f*	T_AVREF_EX
+CvPoint2D32f*		T_AVREF_CV
+const CvPoint2D32f*	T_AVREF_CV
 CvPoint3D32f		T_PACKED
-CvPoint3D32f*		T_AVREF_EX
+CvPoint3D32f*		T_AVREF_CV
 CvPoint3D64f		T_PACKED
-CvPoint3D64f*		T_AVREF_EX
-#CvPOSITObject*		T_PTROBJ_EX
-CvRNG*				T_PTROBJ_EX
+CvPoint3D64f*		T_AVREF_CV
+#CvPOSITObject*		T_PTROBJ_CV
+CvRNG*				T_PTROBJ_CV
 CvRect				T_PACKED
 CvScalar			T_PACKED
-CvSeq*				T_PTROBJ_EX
-const CvSeq*		T_PTROBJ_EX
-CvSeqBlock*			T_PTROBJ_EX
-const CvSeqBlock*	T_PTROBJ_EX
-CvSeqReader*		T_PTROBJ_EX
-const CvSeqReader*	T_PTROBJ_EX
-CvSeqWriter*		T_PTROBJ_EX
-const CvSeqWriter*	T_PTROBJ_EX
-CvSet*				T_PTROBJ_EX
-const CvSet*		T_PTROBJ_EX
-CvSetElem*			T_PTROBJ_EX
-const CvSetElem*	T_PTROBJ_EX
+CvSeq*				T_PTROBJ_CV
+const CvSeq*		T_PTROBJ_CV
+CvSeqBlock*			T_PTROBJ_CV
+const CvSeqBlock*	T_PTROBJ_CV
+CvSeqReader*		T_PTROBJ_CV
+const CvSeqReader*	T_PTROBJ_CV
+CvSeqWriter*		T_PTROBJ_CV
+const CvSeqWriter*	T_PTROBJ_CV
+CvSet*				T_PTROBJ_CV
+const CvSet*		T_PTROBJ_CV
+CvSetElem*			T_PTROBJ_CV
+const CvSetElem*	T_PTROBJ_CV
 CvSize				T_PACKED
 CvSize2D32f			T_PACKED
 CvSlice				T_PACKED
-CvSparseMat*		T_PTROBJ_EX
-const CvSparseMat*	T_PTROBJ_EX
-CvStereoBMState*	T_PTROBJ_EX
-CvStereoGCState*	T_PTROBJ_EX
+CvSparseMat*		T_PTROBJ_CV
+const CvSparseMat*	T_PTROBJ_CV
+CvStereoBMState*	T_PTROBJ_CV
+CvStereoGCState*	T_PTROBJ_CV
 CvString			T_PACKED
 CvStringHashNode	T_PACKED
-CvStringHashNode*	T_PTROBJ_EX
-const CvStringHashNode*	T_PTROBJ_EX
-CvSubdiv2D*			T_PTROBJ_EX
-const CvSubdiv2D*	T_PTROBJ_EX
+CvStringHashNode*	T_PTROBJ_CV
+const CvStringHashNode*	T_PTROBJ_CV
+CvSubdiv2D*			T_PTROBJ_CV
+const CvSubdiv2D*	T_PTROBJ_CV
 CvSubdiv2DPointLocation T_IV
 CvSubdiv2DEdge		T_UV
 CvSubdiv2DPoint		T_PACKED
-CvSubdiv2DPoint*	T_AVREF_EX
+CvSubdiv2DPoint*	T_AVREF_CV
 CvSURFParams		T_PACKED
 CvSURFPoint			T_PACKED
 CvTermCriteria		T_PACKED
 CvTrackbarCallback	T_CALLBACK
-CvTreeNodeIterator*	T_PTROBJ_EX
-CvTypeInfo*			T_PTROBJ_EX
-const CvTypeInfo*	T_PTROBJ_EX
-CvVideoWriter*		T_PTROBJ_EX
-double*				T_AVREF_EX
-const double*		T_AVREF_EX
-float*				T_AVREF_EX
-const float*		T_AVREF_EX
-float**				T_AVREF_EXX
-const float**		T_AVREF_EXX
-tiny* 				T_AVREF_EX
-int*				T_AVREF_EX
-const int*			T_AVREF_EX
+CvTreeNodeIterator*	T_PTROBJ_CV
+CvTypeInfo*			T_PTROBJ_CV
+const CvTypeInfo*	T_PTROBJ_CV
+CvVideoWriter*		T_PTROBJ_CV
+double*				T_AVREF_CV
+const double*		T_AVREF_CV
+float*				T_AVREF_CV
+const float*		T_AVREF_CV
+float**				T_AVREF_CVX
+const float**		T_AVREF_CVX
+tiny* 				T_AVREF_CV
+int*				T_AVREF_CV
+const int*			T_AVREF_CV
 int64				T_IV
-IplConvKernel*		T_PTROBJ_EX
-const IplConvKernel* T_PTROBJ_EX
-IplImage*			T_PTROBJ_EX
-const IplImage*		T_PTROBJ_EX
-IplImage**			T_AVREF_EX
-const IplImage**	T_AVREF_EX
+IplConvKernel*		T_PTROBJ_CV
+const IplConvKernel* T_PTROBJ_CV
+IplImage*			T_PTROBJ_CV
+const IplImage*		T_PTROBJ_CV
+IplImage**			T_AVREF_CV
+const IplImage**	T_AVREF_CV
 VOID*				T_PTRREF
 const VOID*			T_PTRREF
 VOID**				T_PTRREF
 const VOID**		T_PTRREF
 const char**		T_PTRREF
-
+StereoSGBM*			O_OBJECT
 
 ##################################################
 INPUT
 
-T_PTROBJ_EX
+T_PTROBJ_CV
 	do {
 		IV tmp = XS_ptrobj($arg, \"@{$type =~ /\b(Cv|Ipl)(\w+)/; ['Cv::'.$2]}\");
 		if (tmp == -1)
@@ -147,7 +148,7 @@ T_PTROBJ_EX
 		$var = *(${type}*)&tmp;
 	} while (0)
 
-T_AVREF_EX
+T_AVREF_CV
 	int length_$var = 0;
 	if (SvROK($arg) && SvIOK(SvRV($arg)) && SvIV(SvRV($arg)) == 0)
 		$var = ($type)0;
@@ -163,7 +164,7 @@ T_AVREF_EX
 			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
 			\"$var\")
 
-T_AVREF_EXX
+T_AVREF_CVX
 	int length_$var = 0;
 	int* length_inner_$var = (int*)0;
 	if (SvROK($arg) && SvIOK(SvRV($arg)) && SvIV(SvRV($arg)) == 0)
@@ -187,14 +188,23 @@ T_AVREF_EXX
 	    Perl_croak(aTHX_ \"%s: %s is not an array reference\",
 			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
 			\"$var\")
+
+O_OBJECT
+	if (sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG))
+		$var = ($type)SvIV((SV*)SvRV($arg));
+	else {
+		Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\", \"$ntype\");
+	}
 	
 ##################################################
 OUTPUT
 
-T_PTROBJ_EX
+T_PTROBJ_CV
 	sv_setref_pv($arg, \"@{$type =~ /\b(Cv|Ipl)(\w+)/; ['Cv::'.$2]}\", (void*)$var);
 
-T_AVREF_EX
+T_AVREF_CV
 	if (SvTYPE($arg) == SVt_NULL) {
 		;
 	} else if (SvROK($arg) && SvTYPE(SvRV($arg)) == SVt_PVAV) {
@@ -204,3 +214,6 @@ T_AVREF_EX
 			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
 			\"$var\");
 	}
+
+O_OBJECT
+	sv_setref_pv($arg, CLASS, (void*)$var);

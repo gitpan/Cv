@@ -41,8 +41,12 @@ C<Cv> は、OpenCV の C言語のリファレンスに合わせて作成しま�
 コンストラクタに C<new> を使うこともできます。
 しかし引数は C<CreateMat()> に揃えたので少し違います。注意してください。
 
- my $img = Cv::Image->new([ 240, 320 ], CV_8UC3);
+ my $color = Cv::Image->new([ 240, 320 ], CV_8UC3);
+
+引数は省略できます。省略したものは元のオブジェクトから引き継がれます。
+
  my $img2 = $img->new;
+ my $img3 = $img->new(CV_8UC1);  # same as new([240, 320], CV_8UC1)
 
 =item *
 
@@ -143,7 +147,7 @@ C<sample/> にあります。
  fitellipse.pl houghlines.pl image.pl inpaint.pl kalman.pl kmeans.pl
  laplace.pl lkdemo.pl minarea.pl morphology.pl motempl.pl
  mser_sample.pl polar_transforms.pl pyramid_segmentation.pl squares.pl
- stereo_calib.pl tiehash.pl watershed.pl
+ stereo_calib.pl stereo_match.pl tiehash.pl watershed.pl
 
 =head1 バグ
 

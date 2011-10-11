@@ -2,7 +2,14 @@
 use 5.008008;
 use ExtUtils::MakeMaker;
 
-my %with = (QT => 0);
+my %with = (
+	IMGPROC => 1, FEATURES2D => 1, FLANN => 1, OBJDETECT => 1,
+	VIDEO => 1, HIGHGUI => 1, QT => 0, CALIB3D => 1, ML => 1,
+	CONTRIB => 1,
+	);
+foreach (keys %with) {
+	$with{$_} = $ENV{$_} if defined $ENV{$_};
+}
 
 use lib "./lib";
 use Cv::Config;
@@ -31,6 +38,7 @@ my $cf = new Cv::Config;
 }
 
 my @perl_h = qw(perl.h sv.h pp.h);
+my @perl_h_patched = ();
 
 {
 	use Config;
@@ -46,6 +54,7 @@ my @perl_h = qw(perl.h sv.h pp.h);
 			}
 			close PHO;
 			close PHI;
+			push(@perl_h_patched, $patched);
 		}
 	}
 }
@@ -60,6 +69,7 @@ WriteMakefile(
 		List::Util => 0,
 		Time::HiRes => 0,
 		ExtUtils::PkgConfig => 1.12,
+		ExtUtils::ParseXS => 2.22,
 		Cwd => 0,
 	},
 	ABSTRACT_FROM => "lib/Cv.pm",
@@ -77,16 +87,18 @@ WriteMakefile(
 	clean => {
 		FILES => [
 			'const-c.inc', 'const-xs.inc',
-			'_Inline', 'cover_db', 'camera.xml', '*.tmp',
+			'_Inline', 'cover_db', 'camera.xml',
+			'sample.avi',
 			@perl_h_patched,
 			] },
 	);
 
 sub MY::postamble {
+	my $cv_inc = join(' ', glob("Cv-*.inc const-*.inc"));
 	"
-Cv.xs:	Cv-c.inc Cv-xs.inc.tmp lib/Cv/typemap.h
-Cv-xs.inc.tmp:	Cv-xs.inc Makefile.PL
-	perl -lpe 's/\\bvoid\\s*\\*/VOID*/g' Cv-xs.inc >\$@
+Cv.xs:	lib/Cv/typemap.h $cv_inc
+
+const-c.inc const-xs.inc: lib/Cv/Constant.pm
 
 cover:
 	cover -delete

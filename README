@@ -18,6 +18,7 @@ opencv.pc is found by pkg-config:
 
 To install this module type the following:
 
+  $ CC=g++; export CC		# if you use g++ instead of c++
   $ perl Makefile.PL
   $ make
   $ make test
@@ -25,7 +26,7 @@ To install this module type the following:
 
 REQUIREMENTS
 
-    * Perl 5.8.8 or greater is recommended.
+    * Perl 5.8.8 or later is recommended.
 
 This module requires these other libraries:
 
@@ -34,15 +35,7 @@ This module requires these other libraries:
 
 This module requires these other modules:
 
-    * Scalar::Util 1.18
-    * List::Util 1.19
-    * Data::Dumper 2.121
-    * File::Basename 2.7.4
-    * Time::HiRes 1.9707
-    * Test::File 1.29
-    * Test::More 0
-    * Test::Output 0.12
-
+    * ExtUtils::PkgConfig
 
 COPYRIGHT AND LICENCE
 

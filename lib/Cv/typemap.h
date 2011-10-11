@@ -4,6 +4,10 @@
 #define __typemap_h 1
 
 typedef char tiny;
+typedef struct CvCircle {
+	CvPoint2D32f center;
+	float radius;
+} CvCircle;
 
 #define decl_T_PACKED(_type) \
 _type XS_unpack_ ## _type(SV* arg); \
@@ -27,6 +31,7 @@ decl_T_PACKED(CvSubdiv2DPoint)
 decl_T_PACKED(CvSURFParams)
 decl_T_PACKED(CvSURFPoint)
 decl_T_PACKED(CvMemStoragePos)
+decl_T_PACKED(CvCircle)
 
 #if CV_MAJOR_VERSION >= 2
 decl_T_PACKED(CvMSERParams)
@@ -51,6 +56,15 @@ decl_T_PACKED_EX(int*, lengthPtr)
 decl_T_PACKED_EX(CvArr**, CvArrPtrPtr)
 decl_T_PACKED_EX(IplImage**, IplImagePtrPtr)
 
-int XS_ptrobj(SV* arg, const char* obj);
+IV XS_ptrobj(SV* arg, const char* obj);
 
+
+#ifdef __cplusplus
+#if CV_MAJOR_VERSION >= 2
+using namespace cv;
+using namespace std;
+void XS_pack_floatVec(SV* arg, vector<float>& vec);
+void XS_pack_PointVecVec(SV* arg, vector<vector<Point> >& points);
+#endif
+#endif
 #endif

@@ -8,7 +8,7 @@ use warnings;
 use Carp;
 use Scalar::Util qw(blessed);
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 require XSLoader;
 XSLoader::load('Cv', $VERSION);
@@ -82,12 +82,15 @@ use Cv::MatND;
 use Cv::MemStorage;
 use Cv::Moments;
 use Cv::RNG;
-use Cv::Seq;
+use Cv::Seq::Circle;
+use Cv::Seq::Point;
 use Cv::SeqReader;
 use Cv::SparseMat;
 use Cv::StereoBMState;
+use Cv::StereoSGBM;
 use Cv::String;
 use Cv::Subdiv2D;
+use Cv::VideoWriter;
 
 require Exporter;
 
@@ -100,6 +103,7 @@ our %EXPORT_TAGS = (
 
 		qw(
 
+CV_FOURCC
 CV_PI
 CV_RGB
 CV_WHOLE_SEQ
@@ -223,6 +227,11 @@ sub CaptureFromFlipbook {
 	Cv::Flipbook->new(@_);
 }
 
+sub CreateStereoSGBM {
+	my $class = shift;
+	Cv::StereoSGBM->new(@_);
+}	
+
 1;
 __END__
 
@@ -265,10 +274,14 @@ You can use C<CreateSomething()> as a constructors.
 =item *
 
 You can also use C<new> as a constructor. But be careful when you use
-it because the arguments are same as CreateMat().
+it because the parameters are same as CreateMat().
 
  my $img = Cv::Image->new([ 240, 320 ], CV_8UC3);
+
+You can omit parameters and that will be inherited.
+
  my $img2 = $img->new;
+ my $img3 = $img->new(CV_8UC1);  # same as new([240, 320], CV_8UC1)
 
 =item *
 
@@ -365,13 +378,13 @@ test and extend a variety. How easy is as follows.
 
 We rewrite some OpenCV samples in C<Cv>, and put them in sample/.
 
- gfg_codebook.pl calibration.pl camshiftdemo.pl capture.pl contours.pl
- convexhull.pl delaunay.pl demhist.pl dft.pl distrans.pl drawing.pl
- edge.pl facedetect.pl fback_c.pl ffilldemo.pl find_obj.pl
+ bgfg_codebook.pl calibration.pl camshiftdemo.pl capture.pl
+ contours.pl convexhull.pl delaunay.pl demhist.pl dft.pl distrans.pl
+ drawing.pl edge.pl facedetect.pl fback_c.pl ffilldemo.pl find_obj.pl
  fitellipse.pl houghlines.pl image.pl inpaint.pl kalman.pl kmeans.pl
  laplace.pl lkdemo.pl minarea.pl morphology.pl motempl.pl
  mser_sample.pl polar_transforms.pl pyramid_segmentation.pl squares.pl
- stereo_calib.pl tiehash.pl watershed.pl
+ stereo_calib.pl stereo_match.pl tiehash.pl video.pl watershed.pl
 
 =head1 BUGS
 

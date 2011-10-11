@@ -14,6 +14,8 @@ BEGIN {
 	Cv::aliases(
 		[ 'cvCloneMat', 'Clone' ],
 		[ 'cvCalibrateCamera2' ],
+		[ 'cvDecodeImage' ],
+		[ 'cvDecodeImageM' ],
 		[ 'cvFindExtrinsicCameraParams2' ],
 		[ 'cvInitUndistortMap' ],
 		[ 'cvInitUndistortRectifyMap' ],
@@ -27,7 +29,7 @@ BEGIN {
 
 sub new {
 	my $self = shift;
-	my $sizes = @_? shift : $self->sizes;
+	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : $self->sizes;
 	my $type = @_? shift : $self->type;
 	if (@_) {
 		my $data = shift;

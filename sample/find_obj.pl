@@ -65,6 +65,7 @@ sub findPairs {
 	my $imageDescriptors = shift;
 	my @ptpairs = ();
 	if ($USE_FLANN) {
+		die "can't call flannFindPairs\n" unless main->can('flannFindPairs');
 		my $ptpairs = flannFindPairs(
 			$objectKeypoints, $objectDescriptors,
 			$imageKeypoints, $imageDescriptors,
@@ -252,6 +253,8 @@ BEGIN {
 use Cv::Config;
 use Inline C => Config => %Cv::Config::C;
 use Inline C => << '----';
+#ifdef __cplusplus
+
 #include <opencv/cv.h>
 #include <vector>
 #include "typemap.h"
@@ -296,7 +299,7 @@ flannFindPairs(
 	int* indices_ptr = m_indices.ptr<int>(0);
 	float* dists_ptr = m_dists.ptr<float>(0);
 	for (int i=0;i<m_indices.rows;++i) {
-		if (dists_ptr[2*i]<0.6*dists_ptr[2*i+1]) {
+		if (dists_ptr[2*i] < 0.6*dists_ptr[2*i+1]) {
 			av_push(ptpairs, newSViv(i));
 			av_push(ptpairs, newSViv(indices_ptr[2*i]));
 		}
@@ -304,4 +307,5 @@ flannFindPairs(
 	return ptpairs;
 }
 
+#endif
 ----

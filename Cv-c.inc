@@ -4,6 +4,11 @@
 
 #define DIM(x) (sizeof(x)/sizeof((x)[0]))
 
+#define length(x) length_ ## x
+#define VOID void
+#define bless(st0, class, retval) \
+    sv_setref_pv(st0 = sv_newmortal(), class, (void*)retval);
+
 
 /* Global Data */
 
@@ -58,7 +63,7 @@ static void cb_trackbar(int pos)
 
 /* CvMouseCallback */
 
-static void cb_mouse(int event, int x, int y, int flags, void* param)
+static void cb_mouse(int event, int x, int y, int flags, VOID* param)
 {
 	dMY_CXT;
     if (MY_CXT.cb_mouse) {
@@ -71,7 +76,7 @@ static void cb_mouse(int event, int x, int y, int flags, void* param)
 		PUSHs(sv_2mortal(newSViv(x)));
 		PUSHs(sv_2mortal(newSViv(y)));
 		PUSHs(sv_2mortal(newSViv(flags)));
-		PUSHs(sv_2mortal(newSViv(*(int*)&param)));
+		PUSHs(sv_2mortal(newSViv(*(IV*)&param)));
 		PUTBACK;
 		call_sv(MY_CXT.cb_mouse, G_EVAL|G_DISCARD);
 		FREETMPS;
@@ -94,12 +99,8 @@ CvMouseCallback make_perl_cb_CvMouseCallback(SV *callback)
 
 
 /* CvErrorCallback */
-
-typedef int (CV_CDECL *CvErrorCallback)( int status, const char* func_name,
-                                        const char* err_msg, const char* file_name, int line, void* userdata );
-
 static int cb_error(int status, const char* func_name, const char* err_msg,
-					const char* file_name, int line, void* userdata)  {
+					const char* file_name, int line, VOID* userdata)  {
 	dMY_CXT;
     if (MY_CXT.cb_error) {
 		dSP;

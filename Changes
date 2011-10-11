@@ -1,28 +1,41 @@
 Revision history for Cv.pm
 
+0.11 - 2011-10-11
+
+     * split Cv-xs.inc to Cv-*.inc
+     * $img->new inherit ommited parameters
+     * added Cv/StereoSGBM.pm
+     * added Cv/VideoWriter.pm
+     * added Cv/Seq/Circle.pm
+     * added sample/stereo_match.pl, sample/chamfer.pl.
+     * added sample/video.pl, sample/video-thread.pl.
+     * added readByName, chamerMatching
+     * fixed amd64; int to IV
+     * use $Config{cc}
+     * tested OpenCV 2.3.1
+
 0.10 - 2011-08-30
 
-	* fixed tersters report 0.09
-	  - Can't locate ExtUtils/PkgConfig.pm in @INC
+     * fixed tersters report 0.09
+       - Can't locate ExtUtils/PkgConfig.pm in @INC
 
 0.09 - 2011-08-25
 
-	* fixed tersters report 0.08
-	  - Can't locate Cv/Config.pm in @INC
+     * fixed tersters report 0.08
+       - Can't locate Cv/Config.pm in @INC
 
 0.07 - 2011-08-17
 
-	* tested OpenCV 2.2.0 and 2.3.0 
-	* decided to remove keyword parameter.
-	* The argument was along reference manual C in the OpenCV documentation.
-	* Added the configuration to use Inline C.
-	* added some sample scripts
+     * tested OpenCV 2.2.0 and 2.3.0 
+     * decided to remove keyword parameter.
+     * The argument was along reference manual C in the OpenCV documentation.
+     * Added the configuration to use Inline C.
+     * added some sample scripts
        - sample/convexhull-arr.pl
        - sample/convexhull-seq.pl
        - sample/fback_c.pl
        - sample/find_obj.pl
        - sample/flipbook.pl
-       - sample/helper.pl
        - sample/houghlines-prob.pl
        - sample/houghlines-stan.pl
        - sample/mser_sample.pl
@@ -64,7 +77,7 @@ Revision history for Cv.pm
 
 0.04 - 2010-05-30
 
-	* support for i386-freebsd 8.0-release
+     * support for i386-freebsd 8.0-release
 
 0.03 - 2010-05-08
 

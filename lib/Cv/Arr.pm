@@ -24,7 +24,9 @@ BEGIN {
 		[ 'ConvertScaleAbs', 'CvtScaleAbs' ],
 		[ 'Flip', 'Mirror' ],
 		[ 'Get' ],
+		[ 'GetCols', 'GetCol' ],
 		[ 'GetReal' ],
+		[ 'GetRows', 'GetRow' ],
 		[ 'InRange', 'InRangeS' ],
 		[ 'Inv', 'Invert' ],
 		[ 'Max', 'MaxS' ],
@@ -831,7 +833,13 @@ sub Remap {
 sub Resize {
 	# Resize(src, dst, [interpolation])
 	my $src = shift;
-	my $dst = dst(@_) || $src->new;
+	my $dst;
+	if (@_ && ref $_[0] eq 'ARRAY') {
+		my $sizes = shift;
+		$dst = $src->new($sizes);
+	} else {
+		$dst = dst(@_) || $src->new;
+	}
 	unshift(@_, $src, $dst);
 	goto &cvResize;
 }

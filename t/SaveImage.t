@@ -32,7 +32,7 @@ if (1) {
 	isa_ok($saved, 'Cv::Image');
 }
 
-if (cvVersion() >= 2.0) {
+if (cvVersion() >= 2.000) {
 	my $out = dirname($0) . "/tmp.jpg";
 	rmdir($out);
 	unlink($out);

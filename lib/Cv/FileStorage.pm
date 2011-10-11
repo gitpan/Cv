@@ -5,11 +5,15 @@ package Cv::FileStorage;
 use 5.008008;
 use strict;
 use warnings;
+use Carp;
 
 BEGIN {
   Cv::aliases(
 	  [ 'cvWrite' ],
 	  [ 'cvGetFileNodeByName' ],
+	  [ 'Load' ],
+	  [ 'Read' ],
+	  [ 'ReadByName' ],
 	  );
 }
 
@@ -46,6 +50,10 @@ sub Load {
 
 sub Read {
 	Bless(cvRead(@_));
+}
+
+sub ReadByName {
+	Bless(cvReadByName(@_));
 }
 
 1;

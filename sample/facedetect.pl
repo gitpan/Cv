@@ -7,7 +7,7 @@ use lib qw(blib/lib blib/arch);
 use Cv;
 use File::Basename;
 
-my $haarDir = "/usr/local/share/opencv/haarcascades";
+my $haarDir = "/usr/local/share/OpenCV/haarcascades";
 
 sub help {
 	die << "----";
