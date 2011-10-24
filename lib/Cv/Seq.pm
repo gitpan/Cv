@@ -21,8 +21,6 @@ BEGIN {
 		);
 }
 
-#use Cv::Seq::Point;
-#use Cv::Seq::Circle;
 use Cv::Arr;
 our @ISA = qw(Cv::Arr);
 
@@ -48,12 +46,31 @@ sub Push {
 
 sub Shift {
 	my $self = CORE::shift;
-	$self->cvSeqShift;
+	$self->cvSeqPopFront;
 }
 
 sub Unshift {
 	my $self = CORE::shift;
-	$self->cvSeqUnshift($_) for @_;
+	$self->cvSeqPushFront($_) for @_;
+}
+
+sub Splice {
+	# splice($array, $offset, $length, @list)
+	# splice($array, $offset, $length)
+	# splice($array, $offset)
+	my $array = CORE::shift;
+	my $offset = CORE::shift;
+	my $length = @_? CORE::shift : $array->total - $offset;
+	my @le = ();
+	foreach (0 .. $offset - 1) {
+		push(@le, $array->Shift);
+	}
+	my @ce = ();
+	foreach (0 .. $length - 1) {
+		push(@ce, $array->Shift);
+	}
+	$array->Unshift(@le, @_);
+	wantarray? @ce : \@ce;
 }
 
 1;

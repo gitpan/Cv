@@ -86,14 +86,14 @@ sub cvShiftDFT {
 	my $type = $src->GetElemType;
 	
 	my $tmp = Cv::Mat->new([ $cy, $cx], $type);
-	my $q1  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $q2  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $q3  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $q4  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $d1  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $d2  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $d3  = Cv::Mat->new([ $cy, $cx], $type, 1);
-	my $d4  = Cv::Mat->new([ $cy, $cx], $type, 1);
+	my $q1  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $q2  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $q3  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $q4  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $d1  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $d2  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $d3  = Cv::Mat->new([ $cy, $cx], $type, undef);
+	my $d4  = Cv::Mat->new([ $cy, $cx], $type, undef);
 
 	$src->GetSubRect($q1, [0,     0, $cx, $cy]);
 	$src->GetSubRect($q2, [$cx,   0, $cx, $cy]);

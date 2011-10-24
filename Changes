@@ -1,5 +1,17 @@
 Revision history for Cv.pm
 
+0.12 - 2011-10-22
+
+     * added cvMatchTemplate
+     * added cvDecodeImage, cvEncodeImage
+     * added cvPtr*D (experimental)
+     * replaced cvGet[1-3]D with cvGetND.
+     * also replaced cv(GetReal|Set|SetReal|Ptr)[1-3]D with cv${1}ND.
+     * calling videowriter without CV_FOURCC
+     * added some tips 
+     * fixed $$.c exit-code in lib/Cv/Config.pm
+     * fixed cvInitMatHeader step in cvDecodeImage* when CC=cc
+
 0.11 - 2011-10-11
 
      * split Cv-xs.inc to Cv-*.inc
@@ -11,7 +23,6 @@ Revision history for Cv.pm
      * added sample/video.pl, sample/video-thread.pl.
      * added readByName, chamerMatching
      * fixed amd64; int to IV
-     * use $Config{cc}
      * tested OpenCV 2.3.1
 
 0.10 - 2011-08-30

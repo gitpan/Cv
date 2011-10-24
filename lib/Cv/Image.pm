@@ -33,8 +33,8 @@ sub new {
 	croak "usage: Cv::Image->new(sizes, type)" unless defined $depth;
 	my $image;
 	if (@_) {
-		my $data = shift;		# XXXXX
 		$image = Cv::cvCreateImageHeader([reverse @$sizes], $depth, $channels);
+		$image->setData($_[0], &Cv::MAT_CN($type) * $sizes->[1]) if $_[0];
 	} else {
 		$image = Cv::cvCreateImage([reverse @$sizes], $depth, $channels);
 	}

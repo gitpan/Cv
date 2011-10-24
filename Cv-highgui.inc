@@ -168,11 +168,64 @@ C_ARGS:	ext, image, params
 
 MODULE = Cv		PACKAGE = Cv::Mat
 # ====================
+#C# IplImage* cvDecodeImage(const CvMat* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
+#C# CvMat* cvDecodeImageM(const CvMat* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
+
 IplImage*
-cvDecodeImage(const CvMat* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
+cvDecodeImage(SV* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
+ALIAS:	Cv::cvDecodeImage = 1
+INIT:
+	RETVAL = (IplImage*)0;
+CODE:
+	if (SvROK(buf)) {
+		if (sv_isobject(buf)) {
+			if (sv_derived_from(buf, "Cv::Mat")) {
+				IV tmp = SvIV((SV*)SvRV(buf));
+				RETVAL = cvDecodeImage(*(const CvMat**)&tmp, iscolor);
+			} else {
+				char *obj = (char*)sv_reftype(SvRV(buf), TRUE);
+				croak("unsuported object %s\n", obj);
+			}
+		} else {
+			croak("unsuported reference SvTYPE = %d\n", SvTYPE(SvRV(buf)));
+		}
+	} else if (SvPOK(buf)) {
+		CvMat m; int rows = 1, cols = SvCUR(buf);
+		cvInitMatHeader(&m, rows, cols, CV_8UC1, SvPV_nolen(buf), cols);
+		RETVAL = cvDecodeImage(&m, iscolor);
+	} else {
+		croak("unsuported SvTYPE = %d\n", SvTYPE(buf));
+	}
+OUTPUT:
+	RETVAL
 
 CvMat*
-cvDecodeImageM(const CvMat* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
+cvDecodeImageM(SV* buf, int iscolor=CV_LOAD_IMAGE_COLOR)
+ALIAS:	Cv::cvDecodeImageM = 1
+INIT:
+	RETVAL = (CvMat*)0;
+CODE:
+	if (SvROK(buf)) {
+		if (sv_isobject(buf)) {
+			if (sv_derived_from(buf, "Cv::Mat")) {
+				IV tmp = SvIV((SV*)SvRV(buf));
+				RETVAL = cvDecodeImageM(*(const CvMat**)&tmp, iscolor);
+			} else {
+				char *obj = (char*)sv_reftype(SvRV(buf), TRUE);
+				croak("unsuported object %s\n", obj);
+			}
+		} else {
+			croak("unsuported reference SvTYPE = %d\n", SvTYPE(SvRV(buf)));
+		}
+	} else if (SvPOK(buf)) {
+		CvMat m; int rows = 1, cols = SvCUR(buf);
+		cvInitMatHeader(&m, rows, cols, CV_8UC1, SvPV_nolen(buf), cols);
+		RETVAL = cvDecodeImageM(&m, iscolor);
+	} else {
+		croak("unsuported SvTYPE = %d\n", SvTYPE(buf));
+	}
+OUTPUT:
+	RETVAL
 
 #endif
 
@@ -223,7 +276,18 @@ cvSetCaptureProperty(CvCapture* capture, int property_id, double value)
 MODULE = Cv		PACKAGE = Cv
 # ====================
 CvVideoWriter*
-cvCreateVideoWriter(const char* filename, int fourcc, double fps, CvSize frame_size, int is_color=1)
+cvCreateVideoWriter(const char* filename, SV* fourcc, double fps, CvSize frame_size, int is_color=1)
+INIT:
+	int cc;
+	if (SvPOK(fourcc)) {
+		char* cp = SvPV_nolen(fourcc);
+		cc = CV_FOURCC(cp[0], cp[1], cp[2], cp[3]);
+	} else if (SvIOK(fourcc)) {
+		cc = SvIV(fourcc);
+	} else {
+		croak("fourcc: expected \"MJPG\" or CV_FOURCC('M', 'J', 'P', 'G')");
+	}
+C_ARGS:	filename, cc, fps, frame_size, is_color
 
 
 MODULE = Cv		PACKAGE = Cv::VideoWriter

@@ -14,7 +14,7 @@ BEGIN {
 	use_ok('Cv');
 }
 
-{
+if (1) {
 	my $arr = Cv::Mat->new([240, 320], CV_8UC3);
 	isa_ok($arr, "Cv::Mat");
 	my $type_name = Cv->TypeOf($arr)->type_name;
@@ -33,7 +33,7 @@ BEGIN {
 	is($sizes[1], 320);
 }
 
-{
+if (2) {
 	for (
 
 		{ size => [240, 320], type => CV_8UC1 },
@@ -91,26 +91,15 @@ BEGIN {
 }
 
 
-if (0) {
-	for (
-
-		{ size => [240, 320], type => CV_8UC1 },
-
-		) {
-
-		my $arr = new Cv::Mat(@{$_->{size}}, $_->{type});
-		isa_ok($arr, "Cv::Mat");	
-
-		is($arr->type, $_->{type});
-
-		my $dims = $arr->getDims(\my @size);
-		is($dims, scalar @{$_->{size}});
-		for my $i (0 .. $dims - 1) {
-			is($size[$i], $_->{size}[$i]);
-		}
-
-		is($arr->rows, $_->{size}[0]);
-		is($arr->cols, $_->{size}[1]) if ($dims >= 2);
-
-	}
+if (3) {
+	my $rows = 8;
+	my $cols = 8;
+	my $cn = 4;
+	my $step = $cols * $cn;
+	my $data = chr(0) x ($rows * $step);
+	my $mat = Cv::Mat->new([ 8, 8 ], eval("CV_8UC$cn"), $data);
+	is(substr($data, 0 + $_, 1), chr(0)) for 0 .. $cn - 1;
+	$mat->set([0, 0], [ map { 0x41 + $_ } 0 .. $cn - 1 ]);
+	is(substr($data, 0 + $_, 1), chr(0x41 + $_)) for 0 .. $cn - 1;
+	is($mat->get([0, 0])->[$_], 0x41 + $_) for 0 .. $cn - 1;
 }

@@ -68,7 +68,7 @@ WriteMakefile(
 		File::Basename => 0,
 		List::Util => 0,
 		Time::HiRes => 0,
-		ExtUtils::PkgConfig => 1.12,
+		# ExtUtils::PkgConfig => 1.12,
 		ExtUtils::ParseXS => 2.22,
 		Cwd => 0,
 	},

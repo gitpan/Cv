@@ -33,6 +33,7 @@ BEGIN {
 		[ 'Min', 'MinS' ],
 		[ 'Not', 'NotS' ],
 		[ 'Or', 'OrS' ],
+		[ 'Ptr' ],
 		[ 'Set' ],
 		[ 'Split', 'CvtPixToPlane' ],
 		[ 'Sub', 'SubS' ],
@@ -153,7 +154,7 @@ sub Cmp {
 	# CmpS(src, value, [dst], cmpOp)
 	my ($src, $src2_value) = splice(@_, 0, 2);
 	my $dst = dst(@_) || $src->new(
-		$src->sizes, Cv::MAKETYPE(&Cv::CV_8U, Cv::MAT_CN($src->type)));
+		Cv::MAKETYPE(&Cv::CV_8U, Cv::MAT_CN($src->type)));
 	unshift(@_, $src, $src2_value, $dst);
 	if (ref $src2_value eq 'ARRAY') {
 		goto &cvCmpS;
@@ -260,31 +261,17 @@ sub Get {
 	# Get($src, $idx0, $idx1, $idx2, $idx3);
 	# Get($src, [$idx0, $idx1, $idx2, $idx3]);
 	my $src = shift;
-	if (ref $_[0] eq 'ARRAY') {
-		# cvGetND($src, @_);
-		unshift(@_, $src);
-		goto &cvGetND;
-	} elsif (@_ == 1) {
-		# cvGet1D($src, @_);
-		unshift(@_, $src);
-		goto &cvGet1D;
-	} elsif (@_ == 2) {
-		# cvGet2D($src, @_);
-		unshift(@_, $src);
-		goto &cvGet2D;
-	} elsif (@_ == 3) {
-		# cvGet3D($src, @_);
-		unshift(@_, $src);
-		goto &cvGet3D;
-	} else {
-		# cvGetND($src, \@_);
-		@_ = ($src, \@_);
-		goto &cvGetND;
+	unless (ref $_[0] eq 'ARRAY') {
+		my @idx = splice(@_, 0);
+		push(@idx, (0) x ($src->dims - @idx));
+		unshift(@_, \@idx);
 	}
+	unshift(@_, $src);
+	goto &cvGetND;
 }
 
 sub GetCols {
-	# GetCol($src, [$submat], $col);
+	# GetCols($src, [$submat], $col);
 	# GetCols($src, [$submat], $startCol, $endCol);
 	my $arr = shift;
 	my $submat = dst(@_);
@@ -295,7 +282,7 @@ sub GetCols {
 		my $startCol = shift;
 		my $endCol  = shift;
 		my $sizes = [$arr->rows, $endCol - $startCol];
-		$submat ||= $arr->new($sizes, $arr->type, \0);
+		$submat ||= $arr->new($sizes, $arr->type, undef);
 		unshift(@_, $arr, $submat, $startCol, $endCol);
 		goto &cvGetCols;
 	}
@@ -308,27 +295,13 @@ sub GetReal {
 	# GetReal($src, $idx0, $idx1, $idx2, $idx3);
 	# GetReal($src, [$idx0, $idx1, $idx2, $idx3]);
 	my $src = shift;
-	if (ref $_[0] eq 'ARRAY') {
-		# cvGetRealND($src, @_);
-		unshift(@_, $src);
-		goto &cvGetRealND;
-	} elsif (@_ == 1) {
-		# cvGetReal1D($src, @_);
-		unshift(@_, $src);
-		goto &cvGetReal1D;
-	} elsif (@_ == 2) {
-		# cvGetReal2D($src, @_);
-		unshift(@_, $src);
-		goto &cvGetReal2D;
-	} elsif (@_ == 3) {
-		# cvGetReal3D($src, @_);
-		unshift(@_, $src);
-		goto &cvGetReal3D;
-	} else {
-		# cvGetRealND($src, \@_);
-		@_ = ($src, \@_);
-		goto &cvGetRealND;
+	unless (ref $_[0] eq 'ARRAY') {
+		my @idx = splice(@_, 0);
+		push(@idx, (0) x ($src->dims - @idx));
+		unshift(@_, \@idx);
 	}
+	unshift(@_, $src);
+	goto &cvGetRealND;
 }
 
 sub GetRows {
@@ -348,7 +321,7 @@ sub GetRows {
 			$rows++;
 		}
 		my $sizes = [$rows || 1, $arr->cols];
-		$submat ||= $arr->new($sizes, $arr->type, \0);
+		$submat ||= $arr->new($sizes, $arr->type, undef);
 		unshift(@_, $arr, $submat, $startRow, $endRow, $deltaRow);
 		goto &cvGetRows;
 	}
@@ -360,7 +333,7 @@ sub GetSubRect {
 	my $submat = dst(@_);
 	my $rect = shift;
 	my $sizes = [ $rect->[3], $rect->[2] ];
-	$submat ||= $arr->new($sizes, $arr->type, \0);
+	$submat ||= $arr->new($sizes, $arr->type, undef);
 	unshift(@_, $arr, $submat, $rect);
 	goto &cvGetSubRect;
 }
@@ -394,13 +367,13 @@ sub LUT {
 	my $dst = dst(@_);
 	if (Cv::MAT_CN($lut->type) > 1) {
 		my @lut = $lut->split;
-		$dst ||= $src->new($src->sizes, $lut->type);
+		$dst ||= $src->new($lut->type);
 		my @dsts = $dst->split;
 		cvLUT($src, $dsts[$_], $lut[$_]) for 0 .. $#lut;
 		Cv->Merge(\@dsts, $dst); # XXXXX
 	} else {
 		$dst ||= $src->new(
-			$src->sizes, Cv::MAKETYPE(Cv::MAT_DEPTH($lut->type), 1));
+			Cv::MAKETYPE(Cv::MAT_DEPTH($lut->type), 1));
 		unshift(@_, $src, $dst, $lut);
 		goto &cvLUT;
 	}
@@ -433,7 +406,7 @@ sub Merge {
 	unless ($dst) {
 		my $src0 = $srcs->[0];
 		my $type = Cv::MAKETYPE(Cv::MAT_DEPTH($src0->type), scalar @$srcs);
-		$dst = $src0->new($src0->sizes, $type);
+		$dst = $src0->new($type);
 	}
 	unshift(@_, $srcs, $dst);
 	goto &Cv::cvMerge;
@@ -512,6 +485,22 @@ sub Pow {
 	goto &cvPow;
 }
 
+sub Ptr {
+	# Ptr($src, $idx0);
+	# Ptr($src, $idx0, $idx1);
+	# Ptr($src, $idx0, $idx1, $idx2);
+	# Ptr($src, $idx0, $idx1, $idx2, $idx3);
+	# Ptr($src, [$idx0, $idx1, $idx2, $idx3]);
+	my $src = shift;
+	unless (ref $_[0] eq 'ARRAY') {
+		my @idx = splice(@_, 0);
+		push(@idx, (0) x ($src->dims - @idx));
+		unshift(@_, \@idx);
+	}
+	unshift(@_, $src);
+	goto &cvPtrND;
+}
+
 sub Reduce {
 	# Reduce(src, [dst], [dim], [op]);
 	my $src = shift;
@@ -550,35 +539,15 @@ sub Set {
 	# Set($src, [$idx0, $idx1, $idx2, $idx3], $value);
 	my $src = shift;
 	my $value = pop;
-	if (ref $_[0] eq 'ARRAY') {
-		# cvSetND($src, @_, $value);
-		push(@_, $value);
-		unshift(@_, $src);
-		goto &cvSetND;
-	} elsif (@_ == 1) {
-		# cvSet1D($src, @_, $value);
-		push(@_, $value);
-		unshift(@_, $src);
-		goto &cvSet1D;
-	} elsif (@_ == 2) {
-		# cvSet2D($src, @_, $value);
-		push(@_, $value);
-		unshift(@_, $src);
-		goto &cvSet2D;
-	} elsif (@_ == 3) {
-		# cvSet3D($src, @_, $value);
-		push(@_, $value);
-		unshift(@_, $src);
-		goto &cvSet3D;
-	} else {
-		# cvSetND($src, \@_, $value);
-		@_ = ($src, \@_, $value);
-		goto &cvSetND;
+	unless (ref $_[0] eq 'ARRAY') {
+		my @idx = splice(@_, 0);
+		push(@idx, (0) x ($src->dims - @idx));
+		unshift(@_, \@idx);
 	}
+	unshift(@_, $src);
+	push(@_, $value);
+	goto &cvSetND;
 }
-
-
-# void cvSetData(CvArr* arr, void* data, int step)
 
 
 sub SetReal {
@@ -589,27 +558,14 @@ sub SetReal {
 	# SetReal($src, [$idx0, $idx1, $idx2, $idx3], $value);
 	my $src = shift;
 	my $value = pop;
-	if (ref $_[0] eq 'ARRAY') {
-		# cvSetRealND($src, @_, $value);
-		unshift(@_, $src); push(@_, $value);
-		goto &cvSetRealND;
-	} elsif (@_ == 1) {
-		# cvSetReal1D($src, @_, $value);
-		unshift(@_, $src); push(@_, $value);
-		goto &cvSetReal1D;
-	} elsif (@_ == 2) {
-		# cvSetReal2D($src, @_, $value);
-		unshift(@_, $src); push(@_, $value);
-		goto &cvSetReal2D;
-	} elsif (@_ == 3) {
-		# cvSetReal3D($src, @_, $value);
-		unshift(@_, $src); push(@_, $value);
-		goto &cvSetReal3D;
-	} else {
-		# cvSetRealND($src, \@_, $value);
-		@_ = ($src, \@_, $value);
-		goto &cvSetRealND;
+	unless (ref $_[0] eq 'ARRAY') {
+		my @idx = splice(@_, 0);
+		push(@idx, (0) x ($src->dims - @idx));
+		unshift(@_, \@idx);
 	}
+	unshift(@_, $src);
+	push(@_, $value);
+	goto &cvSetRealND;
 }
 
 sub Solve {
@@ -626,7 +582,7 @@ sub Split {
 	unless (@_) {
 		for (1 .. $src->channels) {
 			my $type = Cv::MAKETYPE(Cv::MAT_DEPTH($src->type), 1);
-			my $dst = $src->new($src->sizes, $type);
+			my $dst = $src->new($type);
 			push(@_, $dst);
 		}
 	}
@@ -741,7 +697,7 @@ sub Laplace {
 	# Laplace(src, dst, [apertureSize])
 	my $src = shift;
 	my $dst = dst(@_) || $src->new(
-		$src->sizes, Cv::MAKETYPE(&Cv::CV_16S, Cv::MAT_CN($src->type)));
+		Cv::MAKETYPE(&Cv::CV_16S, Cv::MAT_CN($src->type)));
 	unshift(@_, $src, $dst);
 	goto &cvLaplace;
 }
@@ -952,7 +908,7 @@ sub PyrSegmentation {
 sub Threshold {
 	# Threshold(src, dst, threshold, maxValue, thresholdType)
 	my $src = shift;
-	my $dst = dst(@_) || $src->new($src->sizes, Cv::MAKETYPE(Cv::MAT_DEPTH($src->type), 1));
+	my $dst = dst(@_) || $src->new(Cv::MAKETYPE(Cv::MAT_DEPTH($src->type), 1));
 	unshift(@_, $src, $dst);
 	goto &cvThreshold;
 }
@@ -984,6 +940,17 @@ sub Canny {
 # ============================================================
 #  imgproc. Image Processing: Object Detection
 # ============================================================
+
+sub MatchTemplate {
+	# MatchTemplate(image, templ, result, method)
+	my $image = shift;
+	my $templ = shift;
+	my $result = dst(@_) || $templ->new(
+		[ $image->rows - $templ->rows + 1,
+		  $image->cols - $templ->cols + 1 ], &Cv::CV_32FC1);
+	unshift(@_, $image, $templ, $result);
+	goto &cvMatchTemplate;
+}
 
 # ============================================================
 #  features2d. Feature Detection and Descriptor Extraction:

@@ -32,32 +32,14 @@ SKIP: {
 		my $params = [ CV_IMWRITE_JPEG_QUALITY, $q ];
 		my $jpg = $img->encodeImage(".jpg", $params);
 		isa_ok($jpg, 'Cv::Mat');
+		$img->saveImage(my $tmpjpg = "/var/tmp/$$.jpg", $params);
+		ok($jpg->ptr eq `cat $tmpjpg`, "ptr");
 		my $dec = $jpg->decodeImage;
 		isa_ok($dec, 'Cv::Image');
-		$img->saveImage(my $tmpjpg = "/var/tmp/$$.jpg", $params);
 		my $lod = Cv->loadImage($tmpjpg); unlink($tmpjpg);
 		isa_ok($lod, 'Cv::Image');
-		my $slod = $lod->sum;
-		my $sdec = $dec->sum;
-		is($slod->[$_], $sdec->[$_], "encode+decode jpg $q.$_") for 0..2;
 		if ($verbose) {
 			$dec->putText(sprintf("jpg: quality %d, size %d", $q, $jpg->total),
-						  [ 30, 30 ], $font, cvScalarAll(255));
-			$dec->show;
-			Cv->waitKey(100);
-		}
-	}
-
-	foreach my $c (0 .. 10) {
-		my $t0 = gettimeofday;
-		my $png = $img->encodeImage(".png", [ CV_IMWRITE_PNG_COMPRESSION, $c ]);
-		my $t1 = gettimeofday;
-		isa_ok($png, 'Cv::Mat');
-		my $dec = $png->decodeImageM;
-		isa_ok($dec, 'Cv::Mat');
-		if ($verbose) {
-			$dec->putText(sprintf("png: comp = %d, size = %d, time = %.3f",
-								  $c, $png->total, $t1 - $t0),
 						  [ 30, 30 ], $font, cvScalarAll(255));
 			$dec->show;
 			Cv->waitKey(100);

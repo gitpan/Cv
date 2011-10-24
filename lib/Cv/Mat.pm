@@ -26,14 +26,16 @@ BEGIN {
 		);
 }
 
+use Data::Dumper;
 
 sub new {
 	my $self = shift;
 	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : $self->sizes;
 	my $type = @_? shift : $self->type;
 	if (@_) {
-		my $data = shift;
-		Cv::cvCreateMatHeader(@$sizes, $type);
+		my $mat = Cv::cvCreateMatHeader(@$sizes, $type);
+		$mat->setData($_[0], &Cv::MAT_CN($type) * $sizes->[1]) if $_[0];
+		$mat;
 	} else {
 		Cv::cvCreateMat(@$sizes, $type);
 	}

@@ -58,7 +58,7 @@ while (1) {
 			# $hull->GetSeqElem($_);
 			$hull->Get($_);
 		} else {
-			[ @{$p->Get(${$hull->Get([0, $_])}[0])}[0..1] ];
+			[ @{ $p->Get( [ 0, ${ $hull->Get([0, $_]) }[0] ] ) }[0..1] ];
 		}
 	} (0 .. $hull->total - 1, 0);
 	my $pt0 = shift(@pts);

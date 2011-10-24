@@ -37,8 +37,6 @@ lib/Cv/MatND/Ghost.pm
 lib/Cv/MemStorage.pm
 lib/Cv/Moments.pm
 lib/Cv/Nihongo.pod
-lib/Cv/perl.h
-lib/Cv/pp.h
 lib/Cv/RNG.pm
 lib/Cv/Seq.pm
 lib/Cv/Seq/Circle.pm
@@ -51,7 +49,6 @@ lib/Cv/StereoBMState.pm
 lib/Cv/StereoSGBM.pm
 lib/Cv/String.pm
 lib/Cv/Subdiv2D.pm
-lib/Cv/sv.h
 lib/Cv/typemap
 lib/Cv/typemap.h
 lib/Cv/VideoWriter.pm
@@ -110,6 +107,8 @@ sample/left13.jpg
 sample/left14.jpg
 sample/lena.jpg
 sample/lkdemo.pl
+sample/logo.png
+sample/logo_in_clutter.png
 sample/minarea.pl
 sample/morphology.pl
 sample/motempl.pl
@@ -144,11 +143,9 @@ sample/stereo_calib.txt
 sample/stereo_match.pl
 sample/stuff.jpg
 sample/tiehash.pl
+sample/video-thread.pl
 sample/video.pl
 sample/watershed.pl
-sample/logo.png
-sample/logo_in_clutter.png
-sample/video-thread.pl
 t/AbsDiff.t
 t/Arr.t
 t/AUTOLOAD.t
@@ -184,9 +181,9 @@ t/SetZero.t
 t/Split.t
 t/String.t
 t/Sum.t
+t/threads.t
 t/Threshold.t
 t/Trackbar.t
-t/threads.t
 xlib/Makefile.PL
 xlib/pack-CvBox2D.c
 xlib/pack-CvCircle.c
@@ -210,9 +207,9 @@ xlib/pack-CvSubdiv2DPointPtr.c
 xlib/pack-CvSURFParams.c
 xlib/pack-CvSURFPoint.c
 xlib/pack-CvTermCriteria.c
-xlib/pack-PointVecVec.cpp
 xlib/pack-floatPtr.c
 xlib/pack-floatVec.cpp
+xlib/pack-PointVecVec.cpp
 xlib/pack-tinyPtr.c
 xlib/ptrobj.c
 xlib/unpack-CvArrPtrPtr.c

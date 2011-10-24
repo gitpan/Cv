@@ -1,13 +1,16 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 package Cv::Config;
 
+use 5.008008;
 use strict;
+use warnings;
+use Carp;
 use Cwd qw(abs_path);
 
 our %opencv;
 our %C;
 our $cf;
-our $verbose = 0;
+our $verbose = 1;
 
 sub new {
 	$cf ||= bless {};
@@ -150,12 +153,18 @@ main() {
 		   CV_MAJOR_VERSION
 		   + CV_MINOR_VERSION    * 1e-3
 		   + CV_SUBMINOR_VERSION * 1e-6);
+	exit(0);
 }
 ----
 	;
 			close C;
 			warn "$CC $CCFLAGS -o a.exe $c $LIBS\n" if $verbose;
 			chop(my $v = `$CC $CCFLAGS -o a.exe $c $LIBS && ./a.exe`);
+			unless ($? == 0) {
+				unlink($c);
+				die "$0: can't compile $c to get Cv version.\n",
+				"$0: your system has installed opencv?\n";
+			}
 			if ($v =~ /^\d+\.\d+/) {
 				$self->{version} = $& + 0;
 			}
@@ -205,16 +214,17 @@ sub c {
 
 
 BEGIN {
-	eval("use ExtUtils::PkgConfig");
-	if ($@) {
-		foreach my $key (qw(cflags libs)) {
-			eval {
-				chop(my $value = `pkg-config opencv --$key`);
-				$opencv{$key} = $value;
-			};
+	foreach my $key (qw(cflags libs)) {
+		eval {
+			chop(my $value = `pkg-config opencv --$key`);
+			$opencv{$key} = $value;
+		};
+		if ($?) {
+			warn "=" x 60, "\n";
+			warn "See README to install this module\n";
+			warn "=" x 60, "\n";
+			exit 1;
 		}
-	} else {
-		%opencv = ExtUtils::PkgConfig->find('opencv');
 	}
 	$cf = &new;
 	%C = $cf->c;

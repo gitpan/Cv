@@ -33,7 +33,6 @@ if (2) {
 if (3) {
 	my $stor = new Cv::MemStorage;
 	ok($stor->isa('Cv::MemStorage'));
-	use Cv::Seq::Point;
 	my $seq = new Cv::Seq::Point(0, $stor);
 	ok($seq->isa('Cv::Seq::Point'));
 	# my $type_name = Cv::cvTypeOf($seq)->type_name;
@@ -51,7 +50,6 @@ if (3) {
 if (4) {
 	my $stor = new Cv::MemStorage;
 	ok($stor->isa('Cv::MemStorage'));
-	use Cv::Seq::Point;
 	my $seq = new Cv::Seq::Point(0, $stor);
 	ok($seq->isa('Cv::Seq::Point'));
 	$seq->Unshift([0, 1], [2, 3]);
@@ -61,4 +59,29 @@ if (4) {
 	my $q = $seq->Pop;
 	is($q->[0], 2);
 	is($q->[1], 3);
+}
+
+if (5) {
+	my $stor = Cv::MemStorage->new;
+	ok($stor->isa('Cv::MemStorage'));
+	my $seq = Cv::Seq::Point->new(0, $stor);
+	ok($seq->isa('Cv::Seq::Point'));
+	$seq->Push([1, 1], [2, 2]);
+	is($seq->total, 2);
+
+	my @arr = $seq->Splice(1, 1);
+	is($seq->total, 1);
+	is($arr[0]->[0], 2);
+
+	$seq->Push([2, 2], [3, 3]);
+	is($seq->total, 3);
+	$seq->Splice(1);
+	is($seq->total, 1);
+	$seq->Splice(0);
+	is($seq->total, 0);
+
+	$seq->Push([1, 1], [2, 2], [3, 3]);
+	is($seq->total, 3);
+	$seq->Splice(1, 1, [4, 4], [5, 5]);
+	is($seq->total, 4);
 }

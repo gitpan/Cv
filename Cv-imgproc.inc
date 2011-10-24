@@ -944,3 +944,6 @@ MODULE = Cv		PACKAGE = Cv::Arr
 # ====================
 void
 cvMatchTemplate(const CvArr* image, const CvArr* templ, CvArr* result, int method)
+POSTCALL:
+	ST(0) = ST(2);
+	XSRETURN(1);

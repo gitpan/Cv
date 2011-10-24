@@ -8,7 +8,7 @@ use warnings;
 use Carp;
 use Scalar::Util qw(blessed);
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 require XSLoader;
 XSLoader::load('Cv', $VERSION);
@@ -273,15 +273,19 @@ You can use C<CreateSomething()> as a constructors.
 
 =item *
 
-You can also use C<new> as a constructor. But be careful when you use
-it because the parameters are same as CreateMat().
+You can also use C<new> as a constructor,  e.g. instead of
+C<Cv::Image-E<gt>new> is CreateImage(), C<Cv::Mat-E<gt>new> is
+CreateMat().  In the calling parameters, there are some difference in
+CreateImage() and CreateMat().  But there are no difference in
+C<Cv::something-E<gt>new>.  This is because we create same object without
+knowing about original object in the C<Cv::Arr>.
 
  my $img = Cv::Image->new([ 240, 320 ], CV_8UC3);
 
 You can omit parameters and that will be inherited.
 
  my $img2 = $img->new;
- my $img3 = $img->new(CV_8UC1);  # same as new([240, 320], CV_8UC1)
+ my $img3 = $img->new(CV_8UC1);  # Cv::Image->new([240, 320], CV_8UC1)
 
 =item *
 
@@ -337,11 +341,6 @@ identify them.
  my $dst = $src->Add($src2);        # calling cvAdd()
  my $dst = $src->Add([ 1, 2, 3 ]);  # cvAddS()
 
-C<cvGet1D()> and C<cvGet2D()> are integrated.
-
- my $val = $src->Get($idx1);        # calling cvGet1D()
- my $val = $src->Get($idx1, $idx2); # cvGet2D()
-
 =item *
 
 cvFillConvexPoly() handles the array of points C<CvPoint>.  The
@@ -374,9 +373,48 @@ test and extend a variety. How easy is as follows.
 =back
 
 
+=head1 TIPS
+
+We'll show you the tips about using C<Cv> that we studied from users.
+
+=over 4
+
+=item *
+
+You can use EncodeImage() and Ptr() when you want to output images in
+your CGI without saving to the files.
+
+ use Cv;
+ my $img = Cv::Image->new([240, 320], CV_8UC3);
+ $img->zero->circle([ 100, 100 ], 100, CV_RGB(255, 100, 100));
+ print "Content-type: image/jpg\n\n";
+ print $img->encodeImage(".jpg")->ptr;
+
+You can use that to convert for Imager.
+
+ use Imager;
+ my $imager = Imager->new(data => $img->encodeImage(".ppm")->ptr);
+
+=item *
+
+You can attach the C<Cv> header to the data defined in the Perl world.
+It is not a good manner, but you can get the way to access to that.
+
+ my $data = pack("C*", 0 .. 255);
+ my $mat = Cv::Mat->mew([16, 16], CV_8UC1, $data);
+ substr($data, 0x41, 1) = 'x';
+ print chr($mat->get([4, 1])->[0]), "\n";
+
+=back
+
+
 =head1 SAMPLES
 
-We rewrite some OpenCV samples in C<Cv>, and put them in sample/.
+We rewrote some OpenCV samples in C<Cv>, and put them in sample/.
+
+=over 4
+
+=item
 
  bgfg_codebook.pl calibration.pl camshiftdemo.pl capture.pl
  contours.pl convexhull.pl delaunay.pl demhist.pl dft.pl distrans.pl
@@ -385,6 +423,8 @@ We rewrite some OpenCV samples in C<Cv>, and put them in sample/.
  laplace.pl lkdemo.pl minarea.pl morphology.pl motempl.pl
  mser_sample.pl polar_transforms.pl pyramid_segmentation.pl squares.pl
  stereo_calib.pl stereo_match.pl tiehash.pl video.pl watershed.pl
+
+=back
 
 =head1 BUGS
 

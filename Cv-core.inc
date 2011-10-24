@@ -21,6 +21,12 @@ cvPoint2D64f(double x, double y)
 CvPoint3D64f
 cvPoint3D64f(double x, double y, double z)
 
+CvPoint
+cvPointFrom32f(CvPoint2D32f pt)
+
+CvPoint2D32f
+cvPointTo32f(CvPoint pt)
+
 CvSize
 cvSize(int width, int height)
 
@@ -227,7 +233,7 @@ CODE:
 OUTPUT:
 	RETVAL
 
-int64
+STRLEN
 total(CvArr* arr)
 CODE:
 	int sizes[CV_MAX_DIM];
@@ -513,10 +519,11 @@ cvGet3D(const CvArr* arr, int idx0, int idx1, int idx2)
 CvScalar
 cvGetND(const CvArr* arr, int* idx)
 
-#C# CvMat* cvGetCol(const CvArr* arr, CvMat* submat, int col)
-
 CvMat*
-cvGetCols(const CvArr* arr, CvMat* submat, int startCol, int endCol)
+cvGetCols(const CvArr* arr, CvMat* submat, int startCol, int endCol = NO_INIT)
+ALIAS: cvArr::cvGetCol = 1
+INIT:
+	if (items <= 3) endCol = startCol;
 OUTPUT: RETVAL ST(0) = SvREFCNT_inc(ST(1));
 
 CvMat*
@@ -596,10 +603,10 @@ cvGetReal3D(const CvArr* arr, int idx0, int idx1, int idx2)
 double
 cvGetRealND(const CvArr* arr, int* idx)
 
-#C# CvMat* cvGetRow(const CvArr* arr, CvMat* submat, int row)
-
 CvMat*
-cvGetRows(const CvArr* arr, CvMat* submat, int startRow, int endRow, int deltaRow=1)
+cvGetRows(const CvArr* arr, CvMat* submat, int startRow, int endRow = NO_INIT, int deltaRow=1)
+INIT:
+	if (items <= 3) endRow = startRow;
 OUTPUT: RETVAL ST(0) = SvREFCNT_inc(ST(1));
 
 CvSize
@@ -796,10 +803,49 @@ POSTCALL:
 	ST(0) = ST(1);
 	XSRETURN(1);
 
-#TBD# uchar* cvPtr1D(const CvArr* arr, int idx0, int* type=NULL)
-#TBD# uchar* cvPtr2D(const CvArr* arr, int idx0, int idx1, int* type=NULL)
-#TBD# uchar* cvPtr3D(const CvArr* arr, int idx0, int idx1, int idx2, int* type=NULL)
-#TBD# uchar* cvPtrND(const CvArr* arr, int* idx, int* type=NULL, int createNode=1, unsigned* precalcHashval=NULL)
+SV *
+cvPtr1D(const CvArr* arr, int idx0, int type = NO_INIT)
+CODE:
+	uchar* s = cvPtr1D(arr, idx0, &type);
+	int n = cvGetDimSize(arr, 0);
+	if (items >= 3) sv_setiv(ST(2), type);
+	RETVAL = newSVpvn((const char*)s, n*CV_ELEM_SIZE(type));
+OUTPUT:
+	RETVAL
+
+SV *
+cvPtr2D(const CvArr* arr, int idx0, int idx1, int type = NO_INIT)
+CODE:
+	uchar* s = cvPtr2D(arr, idx0, idx1, &type);
+	int n = cvGetDimSize(arr, 0);
+	if (items >= 4) sv_setiv(ST(3), type);
+	RETVAL = newSVpvn((const char*)s, n*CV_ELEM_SIZE(type));
+OUTPUT:
+	RETVAL
+
+SV *
+cvPtr3D(const CvArr* arr, int idx0, int idx1, int idx2, int type = NO_INIT)
+CODE:
+	uchar* s = cvPtr3D(arr, idx0, idx1, idx2, &type);
+	int n = cvGetDimSize(arr, 0);
+	if (items >= 5) sv_setiv(ST(4), type);
+	RETVAL = newSVpvn((const char*)s, n*CV_ELEM_SIZE(type));
+OUTPUT:
+	RETVAL
+
+SV *
+cvPtrND(const CvArr* arr, int* idx, int type = NO_INIT, int createNode = 1, unsigned precalcHashval = NO_INIT)
+CODE:
+	uchar* s = (items <= 4)? cvPtrND(arr, idx, &type, createNode, NULL) :
+		cvPtrND(arr, idx, &type, createNode, &precalcHashval);
+	int n = cvGetDimSize(arr, 0);
+	if (items >= 3) sv_setiv(ST(2), type);
+	if (items >= 5) sv_setuv(ST(4), precalcHashval);
+	// Obviously, 1x1 or 1xN matrices are always continuous.
+	if (n == 1 && length(idx) >= 2) n = cvGetDimSize(arr, 1);
+	RETVAL = newSVpvn((const char*)s, n*CV_ELEM_SIZE(type));
+OUTPUT:
+	RETVAL
 
 
 MODULE = Cv		PACKAGE = Cv
@@ -908,6 +954,13 @@ POSTCALL:
 void
 cvSetND(CvArr* arr, int* idx, CvScalar value)
 POSTCALL:
+	XSRETURN(1);
+
+void
+cvSetData(CvArr* arr, SV* data, int step)
+CODE:
+	if (!SvPOK(data)) XSRETURN_UNDEF;
+	cvSetData(arr, SvPV_nolen(data), step);
 	XSRETURN(1);
 
 void
@@ -1204,6 +1257,9 @@ MODULE = Cv		PACKAGE = Cv
 # ====================
 CvSlice
 cvSlice(int start_index, int end_index)
+
+int
+cvSliceLength(CvSlice slice, const CvSeq* seq)
 
 
 MODULE = Cv		PACKAGE = Cv::Set
@@ -1640,11 +1696,7 @@ cvSeqInvert(CvSeq* seq)
 
 #C# char* cvSeqInsert(CvSeq* seq, int beforeIndex, void* element=NULL)
 #C# void cvSeqInsertSlice(CvSeq* seq, int beforeIndex, const CvArr* fromArr)
-#C# void cvSeqPop(CvSeq* seq, void* element=NULL)
-#C# void cvSeqPopFront(CvSeq* seq, void* element=NULL)
 #C# void cvSeqPopMulti(CvSeq* seq, void* elements, int count, int in_front=0)
-#C# char* cvSeqPush(CvSeq* seq, void* element=NULL)
-#C# char* cvSeqPushFront(CvSeq* seq, void* element=NULL)
 #C# void cvSeqPushMulti(CvSeq* seq, void* elements, int count, int in_front=0)
 
 CvPoint
@@ -1656,8 +1708,8 @@ OUTPUT:
 	RETVAL
 
 CvPoint
-cvSeqShift_Point(CvSeq* seq)
-ALIAS: Cv::Seq::Point::cvSeqShift = 1
+cvSeqPopFront_Point(CvSeq* seq)
+ALIAS: Cv::Seq::Point::cvSeqPopFront = 1
 CODE:
 	cvSeqPopFront(seq, &RETVAL);
 OUTPUT:
@@ -1670,8 +1722,8 @@ CODE:
 	cvSeqPush(seq, &element);
 
 void
-cvSeqUnshift_Point(CvSeq* seq, CvPoint element)
-ALIAS: Cv::Seq::Point::cvSeqUnshift = 1
+cvSeqPushFront_Point(CvSeq* seq, CvPoint element)
+ALIAS: Cv::Seq::Point::cvSeqPushFront = 1
 CODE:
 	cvSeqPushFront(seq, &element);
 
@@ -1700,7 +1752,8 @@ cvSeqSlice(const CvSeq* seq, CvSlice slice, CvMemStorage* storage=NULL, int copy
 
 #TBD# void cvSetSeqReaderPos(CvSeqReader* reader, int index, int is_relative=0)
 
-#TBD# void cvStartAppendToSeq(CvSeq* seq, CvSeqWriter* writer)
+void
+cvStartAppendToSeq(CvSeq* seq, CvSeqWriter* writer)
 
 #TBD# void cvStartReadSeq(const CvSeq* seq, CvSeqReader* reader, int reverse=0)
 void
@@ -1714,7 +1767,8 @@ CODE:
 OUTPUT:
 	reader
 
-#TBD# void cvStartWriteSeq(int seq_flags, int header_size, int elem_size, CvMemStorage* storage, CvSeqWriter* writer)
+void
+cvStartWriteSeq(int seq_flags, int header_size, int elem_size, CvMemStorage* storage, CvSeqWriter* writer)
 
 #TBD# CvSeq* cvTreeToNodeSeq(const void* first, int header_size, CvMemStorage* storage)
 
@@ -1888,6 +1942,11 @@ OUTPUT:
 	RETVAL
 
 
+MODULE = Cv		PACKAGE = Cv::FileStorage
+# ====================
+void
+cvEndWriteStruct(CvFileStorage* fs)
+
 MODULE = Cv		PACKAGE = Cv
 # ====================
 CvTypeInfo*
@@ -1984,6 +2043,9 @@ MODULE = Cv		PACKAGE = Cv::FileStorage
 # ====================
 int
 cvReadIntByName(const CvFileStorage* fs, const CvFileNode* map, const char* name, int defaultValue=0)
+
+void
+cvReadRawData(const CvFileStorage* fs, const CvFileNode* src, void* dst, const char* dt)
 
 void
 cvReadRawDataSlice(const CvFileStorage* fs, CvSeqReader* reader, int count, void* dst, const char* dt)

@@ -39,14 +39,20 @@ C<Cv> は、OpenCV の C言語のリファレンスに合わせて作成しま�
 =item *
 
 コンストラクタに C<new> を使うこともできます。
-しかし引数は C<CreateMat()> に揃えたので少し違います。注意してください。
+CreateImage() の代りに C<Cv::Image-E<gt>new> を、
+CreateMat() の代りに C<Cv::Mat-E<gt>new> を使うことができます。
+呼び出し形式について、
+CreateImage() と CreateMat() は違いますが、
+C<Cv::something-E<gt>new> を介した場合、違いはありません。
+これは、C<Cv::Arr> の中で、元のオブジェクトのことを知らないで
+同じオブジェクトを作れるようにしています。
 
  my $color = Cv::Image->new([ 240, 320 ], CV_8UC3);
 
 引数は省略できます。省略したものは元のオブジェクトから引き継がれます。
 
  my $img2 = $img->new;
- my $img3 = $img->new(CV_8UC1);  # same as new([240, 320], CV_8UC1)
+ my $img3 = $img->new(CV_8UC1);  # Cv::Image->new([240, 320], CV_8UC1)
 
 =item *
 
@@ -102,11 +108,6 @@ C<cvAdd()> と C<cvAddS()> のような類似した関数は C<Add()>
  my $dst = $src->Add($src2);        # cvAdd() を呼ぶ
  my $dst = $src->Add([ 1, 2, 3 ]);  # cvAddS()
 
-C<cvGet1D()> と C<cvGet2D()> も同様に
-
- my $val = $src->Get($idx1);        # cvGet1D()
- my $val = $src->Get($idx1, $idx2); # cvGet2D()
-
 =item *
 
 配列を扱う関数、たとえば C<FillConvexPoly()> は点 C<CvPoint>
@@ -133,6 +134,42 @@ C<Inline C> を使うためのコンフィギュレーションを用意しま�
 
  use Cv::Config;
  use Inline C => Config => %Cv::Config::C;
+
+=back
+
+=head1 ヒント
+
+Cv を使っている方から、ちょっといい使い方を教えて戴きました。
+
+=over 4
+
+=item *
+
+Cv で作成した画像を CGI で直接出力するとき、
+EncodeImage() と Ptr() を使うことができます。
+画像をファイルに保存する必要がありません。
+
+ use Cv;
+ my $img = Cv::Image->new([240, 320], CV_8UC3);
+ $img->zero->circle([ 100, 100 ], 100, CV_RGB(255, 100, 100));
+ print "Content-type: image/jpg\n\n";
+ print $img->encodeImage(".jpg")->ptr;
+
+これは Imager 向けの変換にも使えます。
+
+ use Imager;
+ my $imager = Imager->new(data => $img->encodeImage(".ppm")->ptr);
+
+=item *
+
+Perl のデータに Cv のヘッダを付けることができます。
+行儀が良いとは言えませんが、
+Cv で Perl のデータを直接操作できるようになります。
+
+ my $data = pack("C*", 0 .. 255);
+ my $mat = Cv::Mat->mew([16, 16], CV_8UC1, $data);
+ substr($data, 0x41, 1) = 'x';
+ print chr($mat->get([4, 1])->[0]), "\n";
 
 =back
 

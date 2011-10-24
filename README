@@ -33,10 +33,6 @@ This module requires these other libraries:
     * OpenCV - Open Computer Vision Library 1.1 or later
       (http://sourceforge.net/projects/opencvlibrary/)
 
-This module requires these other modules:
-
-    * ExtUtils::PkgConfig
-
 COPYRIGHT AND LICENCE
 
 Copyright (c) 2010, 2011 by Masuda Yuta.
