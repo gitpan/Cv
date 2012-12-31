@@ -2,6 +2,7 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 use File::Basename;
@@ -105,7 +106,7 @@ sub cvShiftDFT {
 	$src->GetSubRect($d4, [0,   $cy, $cx, $cy]);
 
     if ($src != $dst) {
-        unless (CV_ARE_TYPES_EQ($q1, $d1)) {
+        unless ($q1->type == $d1->type) {
             Cv->cvError(
 				CV_StsUnmatchedFormats, "cvShiftDFT",
 				"Source and Destination arrays must have the same format",

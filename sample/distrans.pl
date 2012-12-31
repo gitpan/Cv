@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-use lib qw(blib/lib blib/arch);
 use strict;
+use warnings;
+use lib qw(blib/lib blib/arch);
 use Cv;
 use File::Basename;
 use Time::HiRes qw(gettimeofday);
-use Data::Dumper;
 
 my $filename = @ARGV > 0 ? shift : dirname($0).'/'."stuff.jpg";
 my $gray = Cv->LoadImage($filename, CV_LOAD_IMAGE_GRAYSCALE)
@@ -113,7 +113,11 @@ use Cv::Config;
 use Inline C => Config => %Cv::Config::C;
 use Inline C => << '----';
 #include <opencv/cv.h>
-#include "typemap.h"
+#ifndef __cplusplus
+#define __OPENCV_BACKGROUND_SEGM_HPP__
+#define __OPENCV_VIDEOSURVEILLANCE_H__
+#endif
+#include <opencv/cvaux.h>
 
 void dovoronoi(IplImage* labels, IplImage* dist, IplImage* dist8u)
 {

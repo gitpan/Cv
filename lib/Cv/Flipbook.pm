@@ -5,23 +5,48 @@ package Cv::Flipbook;
 use 5.008008;
 use strict;
 use warnings;
-
+use Carp;
 use File::Basename;
+use Cv;
 
-BEGIN {
-	Cv::aliases(
-		[ 'GrabFrame', 'Grab' ],
-		[ 'QueryFrame', 'Query' ],
-		[ 'RetrieveFrame', 'Retrieve' ],
-		[ 'SetProperty' ],
-		[ 'GetProperty' ],
-		);
+our $VERSION = '0.19';
+
+require Exporter;
+
+our @ISA = qw(Exporter);
+
+our %EXPORT_TAGS = ( 'all' => [ qw(
+	
+) ] );
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+
+our @EXPORT = qw(
+	
+);
+
+sub DESTROY { }
+
+{ no strict 'refs'; *AUTOLOAD = \&Cv::autoload; }
+
+{
+	package Cv;
+	sub CaptureFromFlipbook {
+		my $class = shift;
+		Cv::Flipbook->new(@_);
+	}
+}
+
+{
+	package Cv::Capture;
+	*FromFlipbook = \&Cv::CaptureFromFlipbook;
 }
 
 sub new {
     my $class = shift;
-	my $dir = shift;
-	my $flags = shift || &Cv::CV_LOAD_IMAGE_COLOR;
+	my $dir = shift || ".";
+	my $flags = shift;
+	$flags = &Cv::CV_LOAD_IMAGE_COLOR unless defined $flags;
 	my $pattern = shift || [
 		"*.bmp", "*.BMP", "*.jpg", "*.JPG", "*.png", "*.PNG",
 		];
@@ -34,8 +59,9 @@ sub new {
 				flags => $flags,
 				pattern => $pattern,
 			}, $class;
-			$self->{&Cv::CV_CAP_PROP_POS_FRAMES} = 0;
+			$self->{&Cv::CV_CAP_PROP_FRAME_COUNT} = scalar @$list;
 			$self->{&Cv::CV_CAP_PROP_FPS} = 0;
+			$self->{&Cv::CV_CAP_PROP_POS_FRAMES} = 0;
 			$self->{&Cv::CV_CAP_PROP_POS_MSEC} = 0;
 		}
 	}
@@ -47,23 +73,24 @@ sub list {
 	my @files = ();
 	foreach (@_) {
 		if (ref $_) {
-			push(@files, list($dir, @{$_}));
+			if (my $list = list($dir, @{$_})) {
+				push(@files, @$list);
+			}
 		} else {
 			push(@files, map { $_->[0] } sort { $a->[1] <=> $b->[1] } map {
 				basename($_) =~ /\d+/; [ $_, $& ];
 				 } glob("$dir/$_"));
 		}
 	}
+	return undef unless @files && -f $files[0];
 	wantarray ? @files : \@files;
 }
 
-sub DESTROY {
-}
-
+{ *Grab = \&GrabFrame }
 sub GrabFrame {
 	my $self = shift;
 	my $i = $self->{&Cv::CV_CAP_PROP_POS_FRAMES};
-	if ($i >= 0 && $i < @{$self->{files}}) {
+	if ($i >= 0 && $i < $self->{&Cv::CV_CAP_PROP_FRAME_COUNT}) {
 		$self->{file} = ${$self->{files}}[$i];
 	} else {
 		$self->{file} = undef;
@@ -75,38 +102,40 @@ sub NextFrame {
 	$self->{&Cv::CV_CAP_PROP_POS_FRAMES}++;
 }
 
-sub PrevFrame {
-	my $self = shift;
-	$self->{&Cv::CV_CAP_PROP_POS_FRAMES}--;
-}
-
+{ *Retrieve = \&RetrieveFrame }
 sub RetrieveFrame {
 	my $self = shift;
 	if ($self->{file}) {
 		if (my $image = Cv->LoadImage($self->{file}, $self->{flags})) {
-			$self->NextFrame;
 			if ($self->{&Cv::CV_CAP_PROP_FPS}) {
 				$self->{&Cv::CV_CAP_PROP_POS_MSEC} =
-					$self->{&Cv::CV_CAP_PROP_POS_FRAMES} / $self->{&Cv::CV_CAP_PROP_FPS};
+					1000 * $self->{&Cv::CV_CAP_PROP_POS_FRAMES} /
+					$self->{&Cv::CV_CAP_PROP_FPS};
 			}
+			$self->{&Cv::CV_CAP_PROP_FRAME_WIDTH} = $image->width;
+			$self->{&Cv::CV_CAP_PROP_FRAME_HEIGHT} = $image->height;
+			$self->NextFrame;
 			return $image;
 		}
 	}
 	undef;
 }
 
+{ *Query = \&QueryFrame }
 sub QueryFrame {
 	my $self = shift;
-	$self->GrabFrame &&	$self->RetrieveFrame;
+	$self->GrabFrame && $self->RetrieveFrame;
 }
 
-sub GetProperty {
+{ *GetProperty = \&GetCaptureProperty }
+sub GetCaptureProperty {
 	my $self = shift;
 	my $property = shift;
 	$self->{$property};
 }
 
-sub SetProperty {
+{ *SetProperty = \&SetCaptureProperty }
+sub SetCaptureProperty {
 	my $self = shift;
 	my $property = shift;
 	my $value = shift;
@@ -114,3 +143,32 @@ sub SetProperty {
 }
 
 1;
+__END__
+# Below is stub documentation for your module. You'd better edit it!
+
+=head1 NAME
+
+Cv::Flipbook - Perl extension for blah blah blah
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head2 EXPORT
+
+=head1 SEE ALSO
+
+=head1 AUTHOR
+
+MASUDA Yuta E<lt>yuta.cpan@gmail.comE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2012 by MASUDA Yuta
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.14.2 or,
+at your option, any later version of Perl 5 you may have available.
+
+
+=cut

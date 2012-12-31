@@ -2,9 +2,10 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-
 use Cv;
+
 use File::Basename;
 
 my $haarDir = "/usr/local/share/OpenCV/haarcascades";
@@ -39,10 +40,6 @@ my $cascadeName       = "$haarDir/haarcascade_frontalface_alt.xml";
 my $nestedCascadeName = "$haarDir/haarcascade_eye_tree_eyeglasses.xml";
 my $scale = 1;
 
-my $inputName;
-my $cascade;
-my $nestedCascade;
-
 use Getopt::Long;
 unless (GetOptions(
 	"--cascade=s" => \$cascadeName,
@@ -53,18 +50,18 @@ unless (GetOptions(
 }
 
 my $inputName = shift(@ARGV);
-my $cascade = Cv::FileStorage->Load($cascadeName);
+my $cascade = Cv->Load($cascadeName);
 unless ($cascade) {
 	die "ERROR: Could not load classifier cascade";
 }
-my $nestedCascade = Cv::FileStorage->Load($nestedCascadeName);
+my $nestedCascade = Cv->Load($nestedCascadeName);
 unless ($nestedCascade) {
 	warn "WARNING: Could not load classifier cascade for nested objects\n";
 }
 
 my $capture;
 my $image;
-if ($inputName =~ /^\d$/) {
+if (defined $inputName && $inputName =~ /^\d$/) {
     $capture = Cv->captureFromCAM($inputName);
 	unless ($capture) {
 		warn "Capture from CAM $inputName didn't work\n";
@@ -88,16 +85,15 @@ Cv->NamedWindow("result", 0);
 if ($capture) {
 	while (my $frame = $capture->queryFrame) {
 		my $frameCopy = $frame->flip(\0, 1)->clone;
-		detectAndDraw($frameCopy, $cascade, $nestedCascade, $scale);
+		$frameCopy->detectAndDraw($cascade, $nestedCascade, $scale);
 		last if Cv->waitKey(10) > 0;
 	}
 } elsif ($image) {
-	detectAndDraw($image, $cascade, $nestedCascade, $scale);
+	$image->detectAndDraw($cascade, $nestedCascade, $scale);
 	Cv->waitKey;
 }
 
-
-sub detectAndDraw {
+sub Cv::Arr::detectAndDraw {
 	my ($img, $cascade, $nestedCascade, $scale) = @_;
     my @colors = (
 		CV_RGB(  0,   0, 255),
@@ -113,22 +109,32 @@ sub detectAndDraw {
 	my $smallSize = [map { cvRound($_ / $scale) } @{$img->sizes}];
 	my $smallImg = $img->new($smallSize, CV_8UC1);
 	$gray->resize($smallImg, CV_INTER_LINEAR);
-	$smallImg->EqualizeHist($smallImg);
-	my $storage = Cv::MemStorage->new;
-    my $t = Cv->GetTickCount();
-	my $faces = $smallImg->HaarDetectObjects(
+	$smallImg->equalizeHist($smallImg);
+	my $storage = Cv->createMemStorage();
+    my $t = Cv->getTickCount();
+
+	{ package Cv::Seq::FaceDetect;
+	  our @ISA = qw(Cv::Seq::Point);
+	  sub template {
+		  my $self = CORE::shift;
+		  my ($t, $c) = ("i5", 5);
+		  wantarray? ($t, $c) : $t;
+	  }
+	}
+	my $faces = bless $smallImg->HaarDetectObjects(
 		$cascade, $storage, 1.1, 2, 0
         # |CV_HAAR_FIND_BIGGEST_OBJECT
         # |CV_HAAR_DO_ROUGH_SEARCH
         |CV_HAAR_SCALE_IMAGE
 		,
         cvSize(30, 30)
-		);
-    $t = Cv->GetTickCount() - $t;
-    printf("detection time = %g ms\n", $t/(Cv->GetTickFrequency()*1000));
-	foreach my $i (0 .. $faces->total - 1) {
-		my $color = $colors[$i % @colors];
-		my ($x, $y, $w, $h) = unpack("i4", $faces->GetSeqElem($i));
+		), "Cv::Seq::FaceDetect";
+    $t = Cv->getTickCount() - $t;
+    printf("detection time = %g ms\n", $t/(Cv->getTickFrequency()*1000));
+	my $i = 0;
+	for my $face (@$faces) {
+		my $color = $colors[$i++ % @colors];
+		my ($x, $y, $w, $h) = @$face;
 		my $center = [
 			cvRound(($x + $w * 0.5) * $scale),
 			cvRound(($y + $h * 0.5) * $scale),
@@ -137,7 +143,8 @@ sub detectAndDraw {
         $img->circle($center, $radius, $color, 3, 8, 0);
 		next unless $nestedCascade;
         $smallImg->ROI([$x, $y, $w, $h]);
-		my $nestedObjects = $smallImg->HaarDetectObjects(
+
+		my $nestedObjects = bless $smallImg->haarDetectObjects(
 			$nestedCascade, $storage, 1.1, 2, 0
             # |CV_HAAR_FIND_BIGGEST_OBJECT
             # |CV_HAAR_DO_ROUGH_SEARCH
@@ -145,11 +152,10 @@ sub detectAndDraw {
             |CV_HAAR_SCALE_IMAGE
 			,
 			cvSize(30, 30)
-			);
+			), "Cv::Seq::FaceDetect";
         $smallImg->resetROI;
-		foreach my $j (0 .. $nestedObjects->total - 1) {
-			my ($nx, $ny, $nw, $nh) =
-				unpack("i4", $nestedObjects->GetSeqElem($j));
+		foreach my $eye (@$nestedObjects) {
+			my ($nx, $ny, $nw, $nh) = @$eye;
 			my $center = [
 				cvRound(($x + $nx + $nw * 0.5) * $scale),
 				cvRound(($y + $ny + $nh * 0.5) * $scale),

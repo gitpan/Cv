@@ -2,6 +2,7 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 use File::Basename;
@@ -39,17 +40,17 @@ while (1) {
 		my $storage = Cv::MemStorage->new(0);
 		$markers->zero;
 		$marker_mask->findContours(
-			$storage, my $contour, Cv::Sizeof::CvContour(),
+			$storage, my $contour, CV_SIZEOF('CvContour'),
 			CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
 		my $comp_count = 0;
 		for ( ; $contour; $contour = $contour->h_next) {
 			my $color = [ ($comp_count + 1) x 3 ]; $comp_count++;
 			$markers->drawContours($contour, $color, $color, -1, -1, 8);
 		}
-		my $color_tab = Cv::Mat->new([1, 256], CV_8UC3)->zero;
-		$color_tab->set([0, 0], [ 80, 80, 80 ]);
-		$color_tab->set([0, 1], [ 255, 255, 255 ]);
-		$color_tab->set([0, $_], [ map { rand(180) + 50 } 1..3 ])
+		my $color_tab = Cv::Mat->new([256, 1], CV_8UC3)->zero;
+		$color_tab->set([0], [ 80, 80, 80 ]);
+		$color_tab->set([1], [ 255, 255, 255 ]);
+		$color_tab->set([$_], [ map { rand(180) + 50 } 1..3 ])
 			foreach (2 .. $comp_count + 1);
 		my $t = Cv->GetTickCount();
 		$img0->watershed($markers);

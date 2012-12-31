@@ -2,9 +2,10 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-
 use Cv;
+use Cv::Seq::SURFPoint;
 use File::Basename;
 
 my $USE_FLANN = 1;
@@ -12,7 +13,6 @@ my $USE_FLANN = 1;
 my ($object_filename, $scene_filename) =
 	@ARGV == 2 ? @ARGV[0..1] :
 	map { dirname($0) . "/" . $_ } ("box.png", "box_in_scene.png");
-
 
 sub compareSURFDescriptors {
 	my ($d1, $d2, $best, $length) = @_;
@@ -108,15 +108,18 @@ sub locatePlanarObject {
 	my $pt1 = Cv::Mat->new([1, $n], CV_32FC2);
 	my $pt2 = Cv::Mat->new([1, $n], CV_32FC2);
 
+	bless $objectKeypoints, 'Cv::Seq::SURFPoint';
+	bless $imageKeypoints, 'Cv::Seq::SURFPoint';
+
     foreach my $i (0 .. $n - 1) {
-		my $k1pt = $objectKeypoints->GetSURFPoint($ptpairs->[$i*2]);
-		my $k2pt = $imageKeypoints->GetSURFPoint($ptpairs->[$i*2 + 1]);
+		my $k1pt = $objectKeypoints->get($ptpairs->[$i*2]);
+		my $k2pt = $imageKeypoints->get($ptpairs->[$i*2 + 1]);
         $pt1->set([ 0, $i ], $k1pt->[0]);
         $pt2->set([ 0, $i ], $k2pt->[0]);
     }
 
 	my $h = Cv::Mat->new([ 3, 3 ], CV_64F);
-    Cv::Mat::cvFindHomography($pt1, $pt2, $h, CV_RANSAC, 5);
+    Cv->FindHomography($pt1, $pt2, $h, CV_RANSAC, 5);
 
 	my %H = ();
 	foreach my $j (0 .. 2) {
@@ -162,7 +165,7 @@ my @colors = (
 	);
 
 my $object_color = $object->cvtColor(CV_GRAY2BGR);
-my ($imageKeypoints, $imageDescriptors) = (\0, \0);
+# my ($imageKeypoints, $imageDescriptors) = (\0, \0);
 
 my $i;
 my $params = cvSURFParams(500, 1);
@@ -172,11 +175,13 @@ $object->ExtractSURF(
 	\0, my $objectKeypoints, my $objectDescriptors,
 	$storage, $params,
 	);
+bless $objectKeypoints, 'Cv::Seq::SURFPoint';
 printf("Object Descriptors: %d\n", $objectDescriptors->total);
 $image->ExtractSURF(
 	\0, my $imageKeypoints, my $imageDescriptors,
 	$storage, $params,
 	);
+bless $imageKeypoints, 'Cv::Seq::SURFPoint';
 printf("Image Descriptors: %d\n", $imageDescriptors->total);
 $tt = Cv->getTickCount() - $tt;
 printf("Extraction time = %gms\n", $tt / (Cv->getTickFrequency() * 1000.0));
@@ -228,8 +233,8 @@ my $ptpairs = findPairs(
 	);
 
 for (my $i = 0; $i < @$ptpairs; $i += 2) {
-	my $r1 = $objectKeypoints->GetSURFPoint($ptpairs->[$i]);
-	my $r2 = $imageKeypoints->GetSURFPoint($ptpairs->[$i + 1]);
+	my $r1 = $objectKeypoints->get($ptpairs->[$i]);
+	my $r2 = $imageKeypoints->get($ptpairs->[$i + 1]);
 	$correspond->Line(
 		$r1->[0], [ $r2->[0]->[0], $r2->[0]->[1] + $object->height ],
 		$colors[8],
@@ -238,7 +243,7 @@ for (my $i = 0; $i < @$ptpairs; $i += 2) {
 $correspond->ShowImage("Object Correspond");
 
 for (my $i = 0; $i < $objectKeypoints->total; $i++) {
-	my $r = $objectKeypoints->GetSURFPoint($i);
+	my $r = $objectKeypoints->get($i);
 	my $center = $r->[0];
 	my $radius = $r->[1] * 1.2 / 9 * 2;
 	$object_color->Circle($center, $radius, $colors[0], 1, 8, 0);
@@ -253,17 +258,25 @@ BEGIN {
 use Cv::Config;
 use Inline C => Config => %Cv::Config::C;
 use Inline C => << '----';
-#ifdef __cplusplus
 
 #include <opencv/cv.h>
+#ifndef __cplusplus
+#define __OPENCV_BACKGROUND_SEGM_HPP__
+#define __OPENCV_VIDEOSURVEILLANCE_H__
+#endif
+#include <opencv/cvaux.h>
+#ifdef __cplusplus
 #include <vector>
-#include "typemap.h"
+#endif
 
 AV*
 flannFindPairs(
 	const CvSeq* objectKeypoints, const CvSeq* objectDescriptors,
 	const CvSeq* imageKeypoints, const CvSeq* imageDescriptors)
 {
+#ifndef __cplusplus
+	croak("can't call flannFindPairs");
+#else
 	AV* ptpairs = newAV();
 
 	int length = (int)(objectDescriptors->elem_size/sizeof(float));
@@ -305,7 +318,7 @@ flannFindPairs(
 		}
 	}
 	return ptpairs;
+#endif
 }
 
-#endif
 ----

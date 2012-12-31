@@ -2,8 +2,8 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-
 use Cv;
 use File::Basename;
 use Data::Dumper;
@@ -55,7 +55,7 @@ while (my $frame = $capture->QueryFrame) {
 
 	unless ($log_polar_img) {
 		$log_polar_img = Cv::Image->new(
-			$frame->sizes, Cv::MAKETYPE(CV_8U, $frame->nChannels),
+			$frame->sizes, CV_MAKETYPE(CV_8U, $frame->nChannels),
 			);
 		$lin_polar_img = $log_polar_img->new;
 		$recovered_img = $log_polar_img->new;

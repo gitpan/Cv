@@ -1,9 +1,16 @@
 #!/usr/bin/perl
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-use lib qw(blib/lib blib/arch);
 use strict;
+use warnings;
+use lib qw(blib/lib blib/arch);
 use Cv;
+
+{
+	package Cv::SeqReader::Edge;
+	our @ISA = qw(Cv::SeqReader);
+	sub ptr { ${ $_[0]->SUPER::ptr } }
+}
 
 # the script demostrates iterative construction of delaunay
 # triangulation and voronoi tesselation
@@ -28,10 +35,10 @@ sub draw_subdiv {
 	my ($img, $subdiv, $delaunay_color, $voronoi_color) = @_;
 	my $total = $subdiv->edges->total;
 	$subdiv->edges->StartReadSeq(my $reader);
+	bless $reader, 'Cv::SeqReader::Edge';
 	for (1 .. $total) {
-		my $ref_edge = $reader->ptr;
-		if (Cv::IS_SET_ELEM($ref_edge)) {
-			my $edge = ${$ref_edge};
+		my $edge = $reader->ptr;
+		if (CV_IS_SET_ELEM($edge)) {
 			draw_subdiv_edge($img, $edge + 1, $voronoi_color);
 			draw_subdiv_edge($img, $edge, $delaunay_color);
 		}
@@ -88,10 +95,10 @@ sub paint_voronoi {
     my $total = $subdiv->edges->total;
     $subdiv->CalcVoronoi;
 	$subdiv->edges->StartReadSeq(my $reader, 0);
+	bless $reader, 'Cv::SeqReader::Edge';
 	for (1 .. $total) {
-		my $ref_edge = $reader->ptr;
-        if (Cv::IS_SET_ELEM($ref_edge)) {
-			my $edge = ${$ref_edge};
+		my $edge = $reader->ptr;
+        if (CV_IS_SET_ELEM($edge)) {
             draw_subdiv_facet($img, Cv->Subdiv2DRotateEdge($edge, 1)); # left
             draw_subdiv_facet($img, Cv->Subdiv2DRotateEdge($edge, 3)); # right
 		}
@@ -114,8 +121,9 @@ sub run {
 	my $storage = Cv::MemStorage->new(0);
     my $subdiv = Cv::Subdiv2D->createDelaunay([0, 0, 600, 600], $storage);
 
-    print ("Delaunay triangulation will be build now interactively.\n",
-		   "To stop the process, press any key\n\n");
+    print
+		"Delaunay triangulation will be build now interactively.\n",
+		"To stop the process, press any key\n\n";
 
     for (1 .. 200) {
         my $fp = cvPoint2D32f(

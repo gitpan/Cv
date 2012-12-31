@@ -2,8 +2,10 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
+use Scalar::Util qw(blessed);
 
 use Config;
 die "$0: can not use threads\n" unless $Config{useithreads};
@@ -23,7 +25,7 @@ sub capture {
 }
 
 Cv->namedWindow('Cv', 0);
-my $fourcc = CV_FOURCC('M', 'J', 'P', 'G');
+my $fourcc = CV_FOURCC('MJPG');
 my $video = Cv->createVideoWriter("sample.avi", $fourcc, 10, [ 320, 240 ]);
 
 my $cam = 0;

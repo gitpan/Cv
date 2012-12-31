@@ -11,8 +11,8 @@
 # with a different speed.  Pressing ESC will stop the program.
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-use lib qw(../blib/lib ../blib/arch);
 use Cv;
 
 my $img = Cv::Image->new([ 500, 500 ], CV_8UC3);

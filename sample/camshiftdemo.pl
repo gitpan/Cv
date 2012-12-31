@@ -2,9 +2,9 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
-use Data::Dumper;
 use List::Util qw(max min);
 
 my $cap;
@@ -67,8 +67,8 @@ while (1) {
 
 			my $bin_w = $histimg->width / $hdims;
 			for my $i (0 .. $hdims - 1) {
-				my $val = Cv->Round($hist->QueryHistValue([$i]) *
-									$histimg->height / 255);
+				my $val = cvRound($hist->QueryHistValue([$i]) *
+								  $histimg->height / 255);
 				my $color = hsv2rgb($i * 180 / $hdims);
 				$histimg->Rectangle(
 					[$i * $bin_w, $histimg->height],
@@ -84,7 +84,7 @@ while (1) {
 					   my $comp, my $box);
 		$track_window = $comp->[2]; # rect
 		$image = $backproject->CvtColor(CV_GRAY2BGR) if($backproject_mode);
-		$box->[2] = -$box->[2] if $image->origin == 0; # angle
+		# $box->[2] = -$box->[2] if $image->origin == 0; # angle
 		$image->EllipseBox($box, CV_RGB(255, 0, 0), 3);
 	}
 
@@ -120,7 +120,7 @@ sub hsv2rgb {
 						[2,0,1], [2,1,0], [0,1,2] );
     $hue *= 0.033333333333333333333333333333333;
     my $sector = Cv->Floor($hue);
-    my $p = Cv->Round(255*($hue - $sector));
+    my $p = cvRound(255*($hue - $sector));
     $p ^= $sector & 1 ? 255 : 0;
 	
     my @rgb;

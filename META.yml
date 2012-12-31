@@ -1,28 +1,29 @@
---- #YAML:1.0
-name:               Cv
-version:            0.12
-abstract:           helps you to make something around computer vision.
+---
+abstract: 'helps you to make something around computer vision.'
 author:
-    - MASUDA Yuta <yuta.masuda@newdaysys.co.jp>
-license:            unknown
-distribution_type:  module
-configure_requires:
-    ExtUtils::MakeMaker:  0
+  - 'MASUDA Yuta <yuta.cpan@gmail.com>'
 build_requires:
-    ExtUtils::MakeMaker:  0
-requires:
-    Cwd:                0
-    Data::Dumper:       0
-    ExtUtils::ParseXS:  2.22
-    File::Basename:     0
-    List::Util:         0
-    Scalar::Util:       0
-    Time::HiRes:        0
-no_index:
-    directory:
-        - t
-        - inc
-generated_by:       ExtUtils::MakeMaker version 6.56
+  ExtUtils::MakeMaker: 0
+configure_requires:
+  ExtUtils::MakeMaker: 0
+dynamic_config: 1
+generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112150'
+license: unknown
 meta-spec:
-    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
-    version:  1.4
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Cv
+no_index:
+  directory:
+    - t
+    - inc
+requires:
+  Cwd: 0
+  Data::Dumper: 0
+  ExtUtils::MM_Cygwin: 6.62
+  ExtUtils::ParseXS: 3.07
+  File::Basename: 0
+  List::Util: 0
+  Scalar::Util: 0
+  Time::HiRes: 0
+version: 0.21

@@ -2,6 +2,7 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 
@@ -67,7 +68,11 @@ use Cv::Config;
 use Inline C => Config => %Cv::Config::C;
 use Inline C => << '----';
 #include <opencv/cv.h>
-#include "typemap.h"
+#ifndef __cplusplus
+#define __OPENCV_BACKGROUND_SEGM_HPP__
+#define __OPENCV_VIDEOSURVEILLANCE_H__
+#endif
+#include <opencv/cvaux.h>
 
 void drawOptFlowMap(const CvMat* flow, CvMat* cflowmap,
 					int step, double scale, CvScalar color)

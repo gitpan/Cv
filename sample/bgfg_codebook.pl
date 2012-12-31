@@ -2,6 +2,7 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+# use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 use List::Util qw(max min);
@@ -119,9 +120,9 @@ while (1) {
 		$ImaskCodeBookCC = Cv::Image->new($rawImage->sizes, CV_8UC1);
 		$ImaskCodeBook->fill(cvScalar(255));
 
-		Cv->NamedWindow("Raw", 1);
-		Cv->NamedWindow("ForegroundCodeBook", 1);
-		Cv->NamedWindow("CodeBook_ConnectComp", 1);
+		Cv->NamedWindow("Raw", 0);
+		Cv->NamedWindow("ForegroundCodeBook", 0);
+		Cv->NamedWindow("CodeBook_ConnectComp", 0);
 	}
 
 	# If we've got an rawImage and are good to go:
@@ -155,15 +156,11 @@ while (1) {
 	}
 	
 	# User input:
-	my $c = Cv->WaitKey(10);
-	if ($c < 0) {
-		$c = undef;
-	} else {
-		$c = lc(chr($c & 0xff));
-	}
+	next if (my $c = Cv->WaitKey(10)) < 0;
+	$c = lc(chr($c & 0xff));
 
 	# End processing on ESC, q or Q
-	if (ord($c) == 27 || $c eq 'q') {
+	if ($c == "\e" || $c eq 'q') {
 		last;
 	}
 	# Else check for user input

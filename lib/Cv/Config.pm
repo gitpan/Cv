@@ -6,39 +6,24 @@ use strict;
 use warnings;
 use Carp;
 use Cwd qw(abs_path);
+BEGIN { eval "use Cv::Constant" };
+
+our $VERSION = '0.14';
 
 our %opencv;
 our %C;
 our $cf;
-our $verbose = 1;
 
 sub new {
 	$cf ||= bless {};
 	$cf;
 }
 
-sub uniq {
-	my %used = ();
-	my @list = ();
-	foreach (@_) {
-		unless ($used{$_}) {
-			push(@list, $_);
-			$used{$_} = 1;
-		}
-	}
-	@list;
-}
-
 sub cvdir {
 	my $self = shift;
 	unless (defined $self->{cvdir}) {
-		my $cvdir;
-		if (my $myself = $INC{'Cv/Config.pm'}) {
-			my @mypath = split(/\/+/, $myself);
-			$cvdir = join('/', @mypath[0..$#mypath-1]);
-		} else {
-			$cvdir = './lib/Cv';
-		}
+		my @mypath = split(/\/+/, $INC{'Cv/Config.pm'});
+		my $cvdir = join('/', @mypath[0..$#mypath-1]);
 		$self->{cvdir} = abs_path($cvdir);
 	}
 	$self->{cvdir};
@@ -49,14 +34,9 @@ sub typemaps {
 	my $self = shift;
 	my $cvdir = $self->cvdir;
 	unless (defined $self->{TYPEMAPS}) {
-		my @typemaps = ();
-		if (defined $self->{TYPEMAPS}) {
-			@typemaps = split(/:/, $self->{TYPEMAPS});
-		}
-		push(@typemaps, "$cvdir/typemap");
-		$self->{TYPEMAPS} = join(':', uniq(@typemaps));
+		$self->{TYPEMAPS} = [ "$cvdir/typemap" ];
 	}
-	[ split(/\s+/, $self->{TYPEMAPS}) ];
+	$self->{TYPEMAPS};
 }
 
 
@@ -72,9 +52,7 @@ sub cc {
 sub libs {
 	my $self = shift;
 	unless (defined $self->{LIBS}) {
-		my $libs = $opencv{libs};
-		$libs =~ s/(^\s+|\s+$)//g;
-		$self->{LIBS} = [ $libs ];
+		$self->{LIBS} = [ $opencv{libs} ];
 	}
 	$self->{LIBS};
 }
@@ -93,13 +71,9 @@ sub dynamic_lib {
 					}
 				}
 			}
+			$self->{dynamic_lib} = { };
 			if (my $rpath = $cf{'--libdir'} || $cf{'--libexecdir'}) {
-				$self->{dynamic_lib} = {
-					OTHERLDFLAGS => "-Wl,-rpath=$rpath",
-				};
-			} else {
-				$self->{dynamic_lib} = {
-				};
+				$self->{dynamic_lib}{OTHERLDFLAGS} = "-Wl,-rpath=$rpath",
 			}
 			close CC;
 		}
@@ -115,19 +89,18 @@ sub ccflags {
 		my @inc = ("-I$cvdir"); my %inced = ();
 		my $ccflags = $opencv{cflags};
 		my @ccflags = ();
-		if ($? == 0) {
-			$ccflags =~ s/(^\s+|\s+$)//g;
-			foreach (split(/\s+/, $ccflags)) {
-				if (/^-I/) {
-					s/(-I[\w\/]*)\/opencv/$1/;
-					next if $inced{$_};
-					$inced{$_} = 1;
-					push(@inc, $_);
-				} else {
-					push(@ccflags, $_);
-				}
+		$ccflags =~ s/(^\s+|\s+$)//g;
+		foreach (split(/\s+/, $ccflags)) {
+			if (/^-I/) {
+				s/(-I[\w\/]*)\/opencv/$1/;
+				next if $inced{$_};
+				$inced{$_} = 1;
+				push(@inc, $_);
+			} else {
+				push(@ccflags, $_);
 			}
 		}
+		$self->{include} = [map { substr($_, 2) } keys %inced];
 		$self->{CCFLAGS} = join(' ', @inc, @ccflags);
 	}
 	$self->{CCFLAGS};
@@ -136,45 +109,14 @@ sub ccflags {
 
 sub version {
 	my $self = shift;
-	unless (defined $self->{version}) {
-		return $self->{version} = Cv::cvVersion()
-			if Cv->can('cvVersion');
-		my $c = "/tmp/version$$.c";
-		warn "Compiling $c to get Cv version.\n"  if $verbose;
-		my $CC = $self->cc;
-		my $CCFLAGS = $self->ccflags;
-		my $LIBS = join(' ', @{$self->libs});
-		if (open C, ">$c") {
-			print C <<"----";
-#include <stdio.h>
-#include <opencv/cv.h>
-main() {
-	printf("%.6lf\\n",
-		   CV_MAJOR_VERSION
-		   + CV_MINOR_VERSION    * 1e-3
-		   + CV_SUBMINOR_VERSION * 1e-6);
-	exit(0);
-}
-----
-	;
-			close C;
-			warn "$CC $CCFLAGS -o a.exe $c $LIBS\n" if $verbose;
-			chop(my $v = `$CC $CCFLAGS -o a.exe $c $LIBS && ./a.exe`);
-			unless ($? == 0) {
-				unlink($c);
-				die "$0: can't compile $c to get Cv version.\n",
-				"$0: your system has installed opencv?\n";
-			}
-			if ($v =~ /^\d+\.\d+/) {
-				$self->{version} = $& + 0;
-			}
-			# print STDERR "OpenCV: $version\n";
-			unlink($c, 'a.exe');
-		}
-	}
-	$self->{version};
+	return Cv::cvVersion() if Cv->can('cvVersion');
+	&Cv::Constant::CV_MAJOR_VERSION +
+		&Cv::Constant::CV_MINOR_VERSION * 1e-3 +
+		&Cv::Constant::CV_SUBMINOR_VERSION * 1e-6;
 }
 
+
+=xxx
 
 sub myextlib {
 	my $self = shift;
@@ -193,6 +135,8 @@ sub myextlib {
 	$self->{MYEXTLIB};
 }
 
+=cut
+
 
 sub c {
 	my $self = shift;
@@ -201,7 +145,7 @@ sub c {
 		LD       => $self->cc,
 		CCFLAGS  => $self->ccflags,
 		LIBS     => $self->libs,
-		MYEXTLIB => $self->myextlib,
+		# MYEXTLIB => $self->myextlib,
 		TYPEMAPS => $self->typemaps,
 		AUTO_INCLUDE => join("\n", (
 								 '#undef do_open',
@@ -216,6 +160,7 @@ sub c {
 BEGIN {
 	foreach my $key (qw(cflags libs)) {
 		eval {
+			no warnings;
 			chop(my $value = `pkg-config opencv --$key`);
 			$opencv{$key} = $value;
 		};

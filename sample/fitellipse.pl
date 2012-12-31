@@ -16,11 +16,12 @@
 ########################################################################
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 use File::Basename;
 
-my $FITELLIPSE2 = 0;
+my $FITELLIPSE2 = 1;
 
 # Load the source image. HighGUI use.
 my $filename = @ARGV > 0? shift : dirname($0).'/'."stuff.jpg";
@@ -63,12 +64,12 @@ sub process_image {
 
 	# Find all contours.
 	$bimage->findContours(
-		$stor, my $contours, &Cv::Sizeof::CvContour, 
+		$stor, my $contours, &CV_SIZEOF('CvContour'), 
 		CV_RETR_LIST, CV_CHAIN_APPROX_NONE,
 		);
 
 	# Clear images. IPL use.
-	my $cimage = $bimage->new($bimage->sizes, CV_8UC3)->zero;
+	my $cimage = $bimage->new(CV_8UC3)->zero;
 
 	# This cycle draw all contours and approximate it by ellipses.
 	for ( ; $contours; $contours = $contours->h_next) {
@@ -83,7 +84,6 @@ sub process_image {
 			$box = $contours->fitEllipse;
 		} else {
 			# Get contour point set.
-			# Cv::cvCvtSeqToArray($contours, my @points, &CV_WHOLE_SEQ);
 			$contours->cvtSeqToArray(\my @points, &CV_WHOLE_SEQ);
 
 			# Fits ellipse to current contour.
@@ -105,12 +105,20 @@ sub process_image {
 			0, 360,
 			cvScalar(0, 255, 255), 1, &CV_AA,
 			);
+		$cimage->polyLine(
+			[[Cv->boxPoints($box)]], -1, cvScalar(0, 255, 0), 1, &CV_AA
+			);
+
+=xxx
+
 		my @vtx = Cv->boxPoints($box);
 		for (my $j = 0; $j < 4; $j++) {
             $cimage->line(
 				$vtx[$j], $vtx[($j + 1) % 4], cvScalar(0, 255, 0), 1, &CV_AA
 				);
 		}
+=cut
+
 	}
     
 	# Show image. HighGUI use.

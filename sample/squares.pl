@@ -5,8 +5,8 @@
 # subsequentally and tries to find squares in each image
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-use lib qw(../blib/lib ../blib/arch);
 use Cv;
 use File::Basename;
 use Data::Dumper;
@@ -101,11 +101,11 @@ sub findSquares4 {
 				# approximate contour with accuracy proportional to
 				# the contour perimeter
 
-				my $result = $contour->approxPoly(
+				my $result = bless $contour->approxPoly(
 					$contour->header_size, $storage, CV_POLY_APPROX_DP,
 					$contour->contourPerimeter * 0.02,
-					);
-				
+					), 'Cv::Seq::Point';
+
 				# square contours should have 4 vertices after
 				# approximation relatively large area (to filter out
 				# noisy contours) and be convex.
@@ -124,11 +124,11 @@ sub findSquares4 {
 
 						# find minimum angle between joint edges
 						# (maximum of cosine)
-
+						
 						my $t = abs(
 							angle(
 								map {
-									$result->getPoint($_)
+									scalar $result->getSeqElem($_)
 								} ($i, $i - 2, $i - 1)
 							));
 						$s = $s > $t ? $s : $t;
@@ -141,7 +141,7 @@ sub findSquares4 {
 					if ($s < 0.3) {
 						push(@squares, [
 								 map {
-									 $result->getPoint($_)
+									 scalar $result->getSeqElem($_)
 								 } (0..3)
 							 ]);
 					}

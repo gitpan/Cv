@@ -2,8 +2,10 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
+use Cv::Seq::Point2;
 use File::Basename;
 use List::Util qw(min);
 
@@ -45,15 +47,11 @@ if ($HOUGH_STANDARD) {
 			);
     }
 } else {
-	my $lines = $dst->HoughLines2(
+	my $lines = bless $dst->HoughLines2(
 		$storage, CV_HOUGH_PROBABILISTIC, 1, &CV_PI / 180, 50, 50, 10,
-		);
-    for (my $i = 0; $i < $lines->total; $i++) {
-        my ($x1, $y1, $x2, $y2) = unpack("i4", $lines->GetSeqElem($i));
-        $color_dst->Line(
-			[$x1, $y1], [$x2, $y2], CV_RGB(255, 0, 0), 3, CV_AA, 0,
-			);
-    }
+		), 'Cv::Seq::Point2';
+	$color_dst->Line($_->[0], $_->[1], CV_RGB(255, 0, 0), 3, CV_AA, 0)
+		for @$lines;
 }
 
 Cv->NamedWindow("Source", 1);

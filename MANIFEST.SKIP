@@ -2,14 +2,13 @@
 ^blib
 ^cover_db
 ^pm_to_blib
-^support
+\.skip/
 ^\.|/\.
 ^\#|/\#
-
-\.(a|o|bak|new|old|tmp)$
+\.(a|o|bak|new|old|tmp|orig)$
 \~$
-
 lib/Cv/(perl|pp|sv)\.h$
+lib/Cv/Constant\.pm$
 ^Cv\.(bs|c|o)$
 ^const-(c|xs).inc$
 Makefile$
@@ -17,3 +16,4 @@ MYMETA\.yml$
 ^camera\.xml$
 ^sample\.avi$
 ^a$
+t/ref*.pm$

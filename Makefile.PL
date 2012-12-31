@@ -1,41 +1,12 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
+
 use 5.008008;
 use ExtUtils::MakeMaker;
 
-my %with = (
-	IMGPROC => 1, FEATURES2D => 1, FLANN => 1, OBJDETECT => 1,
-	VIDEO => 1, HIGHGUI => 1, QT => 0, CALIB3D => 1, ML => 1,
-	CONTRIB => 1,
-	);
-foreach (keys %with) {
-	$with{$_} = $ENV{$_} if defined $ENV{$_};
-}
-
-use lib "./lib";
+use lib qw(./lib);
 use Cv::Config;
-use Cv::Constant;
-
 my $cf = new Cv::Config;
-
-{
-	use ExtUtils::Constant qw (WriteConstants);
-	*{ExtUtils::Constant::Base::macro_to_ifdef} = sub {
-		my ($self, $macro) = @_;
-		if (ref $macro) {
-			return $macro->[0];
-		}
-		if (defined $macro && $macro ne "" && $macro ne "1") {
-			# return $macro ? "#ifdef $macro\n" : "#if 0\n";
-			return $macro ? "#if 1 /* $macro */\n" : "#if 0\n";
-		}
-		return "";
-	};
-	my %names = map { $_ => 1 } map { @{ $Cv::Constant::EXPORT_TAGS{$_} } }
-		grep { $_ <= $cf->version } keys %Cv::Constant::EXPORT_TAGS;
-	ExtUtils::Constant::WriteConstants(
-		NAME => 'Cv', NAMES => [ keys %names ], DEFAULT_TYPE => 'IV',
-		);
-}
+my %with = ( QT => 0, T => 0 );
 
 my @perl_h = qw(perl.h sv.h pp.h);
 my @perl_h_patched = ();
@@ -59,46 +30,89 @@ my @perl_h_patched = ();
 	}
 }
 
+sub decr (\@) {
+	my $v = shift;
+	if (--$v->[2] < 0) {
+		$v->[2] = 99;
+		if (--$v->[1] < 0) {
+			$v->[1] = 99;
+			--$v->[0];
+		}
+	}
+}
+
+
+# make lib/Cv/Constant.pm
+{
+	my $dst = "lib/Cv/Constant.pm";
+	my $tmp = "a.pm";
+	unless (&dumpconst('-v', '-o', $tmp, @{$cf->{include}}) == 0) {
+		my @v = map { $_ + 0 } ($cf->version =~ /(\d+)\.(\d{3})(\d{3})/);
+		for (; $v[0] >= 0; decr(@v)) {
+			if (-f (my $f = "./fallback/Constant.pm-".join('.', @v))) {
+				$tmp = $f;
+				last;
+			}
+		}
+		die "$0: can't make $dst\n" unless $v[0] >= 0;
+	}
+	if (!-f $dst || &cmp('-s', $tmp, $dst) != 0) {
+		&mv($dst, "$dst.bak") if -f $dst;
+		&cp($tmp, $dst);
+	}
+	&rm('-f', $tmp);
+}
+
+
+my $PREREQ_PM = {
+	Data::Dumper => 0,
+	Scalar::Util => 0,
+	File::Basename => 0,
+	List::Util => 0,
+	Time::HiRes => 0,
+	ExtUtils::ParseXS => 3.07,
+	Cwd => 0,
+};
+
+if ($^O eq 'cygwin') {
+	$PREREQ_PM = {
+		%$PREREQ_PM,
+		ExtUtils::MM_Cygwin => 6.62,
+	};
+}
+
 WriteMakefile(
 	NAME => 'Cv',
 	VERSION_FROM => "lib/Cv.pm", # finds $VERSION
-	PREREQ_PM => {
-		Data::Dumper => 0,
-		Scalar::Util => 0,
-		File::Basename => 0,
-		List::Util => 0,
-		Time::HiRes => 0,
-		# ExtUtils::PkgConfig => 1.12,
-		ExtUtils::ParseXS => 2.22,
-		Cwd => 0,
-	},
+	PREREQ_PM => $PREREQ_PM,
 	ABSTRACT_FROM => "lib/Cv.pm",
-	AUTHOR => 'MASUDA Yuta <yuta.masuda@newdaysys.co.jp>',
+	AUTHOR => 'MASUDA Yuta <yuta.cpan@gmail.com>',
 	LIBS => $cf->libs,
 	CC => $cf->cc,
 	LD => $cf->cc,
 	XSOPT => '-C++ -hiertype',
 	TYPEMAPS => $cf->typemaps,
 	CCFLAGS => $cf->ccflags,
-    DEFINE => join(' ', map { "-DWITH_$_=$with{$_}" } keys %with),
-	MYEXTLIB => 'xlib/libxs$(LIB_EXT)',
+	DEFINE => join(' ', map { "-DWITH_$_=$with{$_}" } keys %with),
 	dynamic_lib => $cf->dynamic_lib,
-	INC => "-I.",
+	INC => "-I. -I..",
 	clean => {
 		FILES => [
-			'const-c.inc', 'const-xs.inc',
-			'_Inline', 'cover_db', 'camera.xml',
-			'sample.avi',
-			@perl_h_patched,
+			'_Inline', 'cover_db',
+			'camera.xml', 'contours.xml', 'sample.avi', '*.tmp',
+			'auto', @perl_h_patched,
+			't/ref-*.pm',
+			'lib/Cv/Constant.pm',
 			] },
 	);
 
 sub MY::postamble {
-	my $cv_inc = join(' ', glob("Cv-*.inc const-*.inc"));
 	"
-Cv.xs:	lib/Cv/typemap.h $cv_inc
+ref:
+	./tools/ref2pl-all.pl |sh -x
 
-const-c.inc const-xs.inc: lib/Cv/Constant.pm
+const:
+	./tools/dumpconst-all.pl |sh -x
 
 cover:
 	cover -delete
@@ -106,8 +120,21 @@ cover:
 	cover
 	find cover_db -type d |xargs chmod +rx
 
-\$(MYEXTLIB):
-	cd xlib && \$(MAKE) \$(PASSTHRU)
-
 ";
+}
+
+sub AUTOLOAD {
+	our $AUTOLOAD;
+	(my $program = $AUTOLOAD) =~ s/.*:://;
+	my @program = grep { -x $_ } (
+		"./tools/$program.pl",
+		"/usr/local/bin/$program",
+		"/usr/bin/$program",
+		"/bin/$program",
+	);
+	if (@program) {
+		print STDERR join(' ', $program[0], @_), "\n";
+		return system($program[0], @_);
+	}
+	die "$0: ?$program\n";
 }

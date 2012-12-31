@@ -2,9 +2,9 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
-use Data::Dumper;
 
 my $capture;
 my $videoSource;
@@ -21,10 +21,9 @@ if (@ARGV == 0) {
 $capture or die "can't create capture";
 
 my $frame = $capture->queryFrame;
-my $laplace = Cv::Image->new(
-	$frame->sizes, Cv::MAKETYPE(&Cv::CV_16S, Cv::MAT_CN($frame->type)));
+my $laplace = $frame->new(CV_16SC(CV_MAT_CN($frame->type)));
 
-my $smoothType = &CV_GAUSSIAN;
+my $smoothType = CV_GAUSSIAN;
 Cv->namedWindow("Laplacian", 0);
 Cv->createTrackbar("Sigma", "Laplacian", my $sigma = 3, 15, sub {});
 
@@ -42,8 +41,8 @@ for (;;) {
 	$c &= 0xffff if $c >= 0;
 	if ($c == ord(' ')) {
 		$smoothType =
-			$smoothType == &CV_GAUSSIAN ? &CV_BLUR :
-			$smoothType == &CV_BLUR ? &CV_MEDIAN : &CV_GAUSSIAN;
+			($smoothType == CV_GAUSSIAN) ? CV_BLUR :
+			($smoothType == CV_BLUR) ? CV_MEDIAN : CV_GAUSSIAN;
 	}
 	last if $c == ord('q') || $c == ord('Q') || $c == 27;
 }

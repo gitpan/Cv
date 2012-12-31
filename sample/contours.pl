@@ -2,6 +2,7 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 
@@ -42,12 +43,21 @@ for (my $i = 0; $i < 6; $i++) {
 	}
 }
 
+Cv->namedWindow('image', 1);
+$img->showImage('image');
+
 $img->findContours(
-	$storage, my $cont, Cv::Sizeof::CvContour(),
+	$storage, my $contours, CV_SIZEOF('CvContour'),
 	CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
-my $contours = $cont->approxPoly(
-	$cont->header_size, $storage, CV_POLY_APPROX_DP, 3, 1);
+{
+    Cv->Save("contours.xml", $contours, \0, \0, [recursive => 1]);
+	$contours = Cv->Load("contours.xml", $storage);
+}
+
+# comment this out if you do not want approximation
+$contours = $contours->approxPoly(
+	$contours->header_size, $storage, CV_POLY_APPROX_DP, 3, 1);
 
 Cv->namedWindow('contours', 1);
 Cv->createTrackbar('levels+3', 'contours', my $levels = 3, 7, \&on_trackbar);
@@ -65,7 +75,6 @@ sub on_trackbar {
 	my $cnt_img = Cv::Image->new([$w, $w], CV_8UC3)->zero;
     my $_contours = $contours;
 	my $_levels = $levels - 3;
-	# my $_levels = $_[0] - 3;
     if ($_levels <= 0) { # get to the nearest face to make it look more funny
         $_contours = $_contours->h_next->h_next->h_next;
 	}

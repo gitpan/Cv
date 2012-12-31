@@ -4,6 +4,7 @@
 # http://opencv.jp/sample/camera_calibration.html
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
 use Cv;
 use IO::File;
@@ -100,19 +101,20 @@ sub Calibrate {
 
 	# (5) 内部パラメータ，歪み係数の推定
 	my $intrinsic   = Cv::Mat->new([3, 3], CV_32FC1);
-	my $rotation    = Cv::Mat->new([1, 3], CV_32FC1);
-	my $translation = Cv::Mat->new([1, 3], CV_32FC1);
 	my $distortion  = Cv::Mat->new([1, 4], CV_32FC1);
+
+	my $rvects = Cv::Mat->new([$IMAGE_NUM, 3], CV_64FC1);
+	my $tvects = Cv::Mat->new([$IMAGE_NUM, 3], CV_64FC1);
 
 	$object_points->CalibrateCamera2(
 		$image_points, $point_counts, $calib_image->size,
-		$intrinsic, $distortion,
+		$intrinsic, $distortion, $rvects, $tvects,
 		);
 
 	# (6) 外部パラメータの推定
 	my $sub_image_points = Cv::Mat->new([$PAT_SIZE, 1], CV_32FC2);
-	my $sub_object_points = Cv::Mat->new([$PAT_SIZE, 1], CV_32FC3);
-#	my $sub_object_points = Cv::Mat->new([$PAT_SIZE, 3], CV_32FC1);
+#	my $sub_object_points = Cv::Mat->new([$PAT_SIZE, 1], CV_32FC3);
+	my $sub_object_points = Cv::Mat->new([$PAT_SIZE, 3], CV_32FC1);
 	my $base = 0;
 	$image_points->GetRows(
 		$sub_image_points, $base * $PAT_SIZE, ($base+1) * $PAT_SIZE,
@@ -120,10 +122,15 @@ sub Calibrate {
 	$object_points->GetRows(
 		$sub_object_points, $base * $PAT_SIZE, ($base+1) * $PAT_SIZE,
 		);
+	my $rotation    = Cv::Mat->new([1, 3], CV_32FC1);
+	my $translation = Cv::Mat->new([1, 3], CV_32FC1);
 	$sub_object_points->FindExtrinsicCameraParams2(
 		$sub_image_points, $intrinsic, $distortion,
 		$rotation, $translation,
 		);
+
+	# Cv->Save("intrinsic.xml", $intrinsic);
+	# Cv->Save("distortion.xml", $distortion);
 
 	# (7) XMLファイルへの書き出し
 	my $fs = Cv::FileStorage->new("camera.xml", CV_STORAGE_WRITE);

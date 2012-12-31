@@ -2,8 +2,8 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-
 use Cv;
 use File::Basename;
 
@@ -13,10 +13,10 @@ my $image = Cv->LoadImage($filename, CV_LOAD_IMAGE_COLOR) or
 
 # Convert to grayscale
 my $gray = $image->CvtColor(CV_BGR2GRAY);
-my $edge = Cv::Image->new($image->sizes, Cv::MAKETYPE(CV_8U, 1));
+my $edge = Cv::Image->new($image->sizes, CV_MAKETYPE(CV_8U, 1));
 
 # Create the output image
-my $cedge = Cv::Image->new($image->sizes, Cv::MAKETYPE(CV_8U, 3));
+my $cedge = Cv::Image->new($image->sizes, CV_MAKETYPE(CV_8U, 3));
 
 # Create a window
 Cv->NamedWindow("Edge");

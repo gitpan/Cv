@@ -1,88 +1,66 @@
 #!/usr/bin/perl
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-package Cv::TieHash;
-
-use 5.008000;
 use strict;
 use warnings;
-
-use Tie::Hash;
-
 use lib qw(blib/lib blib/arch);
 use Cv;
 
+package Cv::TieHash;
+
+use Tie::Hash;
+
 our @ISA = qw(Tie::Hash);
 
+sub Cv::Arr::THIS { $_[0] }
+
 sub TIEHASH {
-	my $class = shift;
-	bless {
-		image => $_[0],
-		fetch => {
-			image =>    sub { $_[0] },
-			depth =>    sub { $_[0]->depth },
-			channels => sub { $_[0]->channels },
-			origin =>   sub { $_[0]->origin },
-			width =>    sub { $_[0]->width },
-			height =>   sub { $_[0]->height },
-		},
-		store => {
-			origin =>   sub { $_[0]->origin($_[1]) },
-		},
-	}, $class;
+	bless [ $_[1] ], $_[0];
 }
 
 sub FETCH {
-	my $self = shift;
-	my $key = shift;
-	if (defined (my $fetch = $self->{fetch}{$key})) {
-		&{$fetch}($self->{image}, @_);
+	my ($self, $key) = @_;
+	my $arr = $self->[0];
+	if (ref $key eq 'ARRAY') {
+		$arr->get($key);
 	} else {
-		$self->{image}->get([map int, split($;, $key)]);
+		$arr->$key();
 	}
 }
 
 sub STORE {
-	my $self = shift;
-	my $key = shift;
-	if (defined (my $store = $self->{store}{$key})) {
-		&{$store}($self->{image}, @_);
+	my ($self, $key, $value) = @_;
+	my $arr = $self->[0];
+	if (ref $key eq 'ARRAY') {
+		# $arr->set($key, $value);
+		$arr->SetND($key, $value);
 	} else {
-		$self->{image}->set([map int, split($;, $key)], @_);
+		$arr->$key($value);
 	}
 }	
 
-1;
 
 package main;
 
-use strict;
-
-use lib qw(blib/lib blib/arch);
-use Cv;
 use Time::HiRes qw(gettimeofday);
+use Data::Dumper;
 
-tie my %hash, 'Cv::TieHash', Cv::Image->new([ 240, 320 ], CV_8UC3);
+tie my %image, 'Cv::TieHash', Cv::Image->new([ 240, 320 ], CV_8UC3);
 
-foreach ('depth', 'channels', 'origin', 'width', 'height') {
-	print STDERR "$_ = ", $hash{$_}, "\n";
+$image{fill} = cvScalarAll(127);
+
+foreach (qw(type depth channels origin sizes avg)) {
+	print Data::Dumper->Dump([$image{$_}], ["\$image{$_}"]);
 }
 
 my $t0 = gettimeofday;
 
-$hash{origin} = 1;
-foreach my $row (0 .. $hash{height} - 1) {
-	for (my $col = 0; $col <= $hash{width} - 8; $col += 8) {
-		$hash{$row, $col + 0} = [   0,   0,   0 ];
-		$hash{$row, $col + 1} = [ 255,   0,   0 ];
-		$hash{$row, $col + 2} = [   0, 255,   0 ];
-		$hash{$row, $col + 3} = [ 255, 255,   0 ];
-		$hash{$row, $col + 4} = [   0,   0, 255 ];
-		$hash{$row, $col + 5} = [ 255,   0, 255 ];
-		$hash{$row, $col + 6} = [   0, 255, 255 ];
-		$hash{$row, $col + 7} = [ 255, 255, 255 ];
+$image{origin} = 1;
+foreach my $row (0 .. $image{rows} - 1) {
+	foreach my $col (0 .. $image{cols} - 1) {
+		$image{[$row, $col]} = [ map { ($col & $_) && 0xff } 1, 2, 4 ];
 	}
-	$hash{image}->show($0);
+	$image{THIS}->show($0);
 	my $c = Cv->waitKey(33);
 	last if ($c >= 0 && ($c & 0x7f) == 27);
 }
@@ -90,12 +68,12 @@ foreach my $row (0 .. $hash{height} - 1) {
 my $t1 = gettimeofday;
 print $t1 - $t0, "\n";
 
-$hash{origin} = 0;
-foreach my $row (0 .. $hash{height} - 1) {
-	foreach my $col (0 .. $hash{width} - 1) {
-		$hash{$row, $col} = [ map { $_ ^ 0xff } @{$hash{$row, $col}} ];
+$image{origin} = 0;
+foreach my $row (0 .. $image{rows} - 1) {
+	foreach my $col (0 .. $image{cols} - 1) {
+		$image{[$row, $col]} = [ map { $_ ^ 0xff } @{$image{[$row, $col]}} ];
 	}
-	$hash{image}->show($0);
+	$image{THIS}->show($0);
 	my $c = Cv->waitKey(33);
 	last if ($c >= 0 && ($c & 0x7f) == 27);
 }

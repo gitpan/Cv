@@ -1,0 +1,584 @@
+# -*- mode: pod; coding: utf-8; tab-width: 4; -*-
+=encoding utf8
+
+=head1 名前
+
+Cv::More - L<Cv|Cv::Nihongo> をもう少し Perl で使いやすくしたいね。
+
+=head1 概要
+
+ use Cv::More qw(cs);
+
+=head1 説明
+
+C<Cv::More> は、L<Cv|Cv::Nihongo> から実験的な機能を切り離して整理する
+ためのパッケージです。C<Cv> が拡張しやすくなると考えています。
+C<Cv::More> は、C<Cv> の一部を切り離したものなので、使わないことを明示
+しない限り取り込みます。
+
+ use Cv;              # Cv::More を使う
+ use Cv qw(:nomore);  # Cv::More を使わない
+
+=head2 Perlの配列を使う
+
+Perl で 2次元の点のリストは、おそらく次のようなものになるでしょう。
+
+ my @pts = ( [ $x0, $y0 ], [ $x1, $y1 ], [ $x2, $y2 ] );
+
+OpenCV には、こうしたデータを処理する関数がいくつもあります。使用するに
+は、このようなリストを OpenCV のマトリクスやシーケンスに変換しなければ
+なりません。はじめはこのあたりから C<Cv> を使いやすくするということにつ
+いて考えてみましょう。
+
+=over
+
+=item
+
+点のリストを処理する関数は、次のドキュメンテーションの中に、いくつも見
+付けられます。
+
+L<http://docs.opencv.org/modules/imgproc/doc/structural_analysis_and_shape_descriptors.html>
+
+=back
+
+=head3 Perlの配列でマトリクスを作る
+
+上記の点のリスト C<@pts> をマトリクスのオブジェクトに変換するには、Nx1
+のマトリクスを作り、要素を 1つずつ代入します。
+
+ my $mat = Cv::Mat->new([ 3, 1 ], CV_32FC2);
+ $mat->set([ 0, 0 ], [ $x0, $y0 ]);
+ $mat->set([ 1, 0 ], [ $x1, $y1 ]);
+ $mat->set([ 2, 0 ], [ $x2, $y2 ]);
+
+これは、C<Cv::Mat-E<gt>new()> にオブジェクトの作成だけでなく、初期値を
+設定する機能を持たせて、次のとおり 1つにまとめましょう。大きさは初期値
+から分りますが、指定したくなることも考えられるので、省略 (初期値から得
+られる大きさを使うということ) を C<[ ]> で示します。
+
+ my $pts = Cv::Mat->new([ ], CV_32FC2,
+    [ $x0, $y0 ], [ $x1, $y1 ], [ $x2, $y2 ],
+    );
+
+もうひとつ、大きさ 3x3、要素の型 C<CV_32FC1> のカメラマトリクスを作る例
+を示します。
+
+ my $cmat = Cv::Mat->new([ ], CV_32FC1,
+    [ $fx,   0, $cx ],
+    [   0, $fy, $cy ],
+    [   0,   0,   1 ],
+    );
+
+書き方にもよりますが、代入文を並べるより直感的だと思います。この拡張は、
+C<Cv::More> で C<Cv::Mat::new> を再定義して実験し、もし使いやすければ、
+他のクラスへの適用も考えることにします。 XXXXX
+
+=head3 マトリクスに要素を代入する
+
+上の L</Perlの配列でマトリクスを作る> と同じように、次の 3x3 のマトリク
+スの部分的な更新について考えましょう。
+
+ my $mat = Cv::Mat->new([ 3, 3 ],  CV_32FC2);
+ $mat->set([ 2, 0 ], $pts[0]);
+ $mat->set([ 2, 1 ], $pts[1]);
+ $mat->set([ 2, 2 ], $pts[2]);
+
+このコードは要素を 1つずつ代入します。 C<Cv> は、C言語のリファレンスを
+そのまま実装したので、要素の代入しか出来ません。要素を修飾するマトリク
+スのインデクスは、要素 C<$pts[0]>, C<$pts[1]>, C<$pts[2]> に合わせた
+C<[ 2, 0 ]>, C<[ 2, 1 ]>, C<[ 2, 2 ]> になり、少々、冗長です。3行を1行
+にまとめましょう。
+
+ $mat->set([ 2 ], [ $pts[0], $pts[1], $pts[2] ]);
+ $mat->set([ 2 ], \@pts);
+
+すっきりしました。ただ、このインデクスを C<[ 2 ]> と書く表現は、すでに
+C<Set()> では少し違う意味で使っています。それは、省略したインデクスを単
+に 0で補うというものですが、1次元のリストの表現に 2次元の C<Cv::Mat> を
+Nx1 で使ったとき、いつも 0 になるインデクスの省略を許すことになるのです。
+具体的には次のとおり。どちらも同じように働きます。
+
+ my $points = Cv::Mat->new([ 3, 1 ], CV_32FC2);
+ $points->set([ 2, 0 ], [ $x, $y ]);   # すべてのインデクスを書く
+ $points->set([ 2 ], [ $x, $y ]);      # いつも 0 になるインデクスを省略
+
+というわけで、C<[ 2 ]> は C<[ 2, x ]> の要素をまとめた代入先という意味
+と、C<[ 2, 0 ]> の 0 の省略という 2つの意味を持つことになります。これは
+C<Cv::Mat::new> を再定義する m_set() で詳細を考えましょう。
+
+=head3 Perlの配列とOpenCVのシーケンス
+
+OpenCV には多数の同じ要素を格納するマトリクスと異なる要素を格納するシー
+ケンスというデータ構造があります。どちらでも点のリストは表現できます。
+少し視点を変えて、OpenCV に用意されているシーケンスの利用について考えて
+みましょう。(これはL<Cv::Seq|Cv::Seq-ja> へ)
+
+=head3 マトリクスを Perl の配列に戻す
+
+それでは次に OpenCV のデータを Perl の配列に変換する、戻すということに
+ついて考えてみましょう。点を格納した Nx1 のマトリクスから順番に要素を取
+り出すためのコードは次のとおり。
+
+ for (my $i = 0; $i < $mat->rows; $i++) {
+   my $x = $mat->get([$i, 0]);
+   ...
+ }
+
+インデクス $i は要素を取り出す場面でしか使われないことが多いので、少し
+工夫すれば次のとおり書くことができます。
+
+ for ($mat->ToArray) {
+     ...
+ }
+
+更に C<@{}> をオーバロードして C<ToArray()> を呼び出せるようにすれば、
+Perl の点の配列を扱うところで利用者の負担を減らすことができます。たとえ
+ば、点のリストを入力にする C<PolyLine()> では次のとおり。
+
+ $img->polyLine([ [ @$mat ] ], ...);
+
+
+=head3 疎な点と密な点
+
+OpenCV には疎な点と密な点があります。 疎な点とは、その言葉通り、まばら
+な点のことです。疎な点は、座標あるいは座標と値の対を値として集めたもの
+で、OpenCV の文書中では疎な点集合と呼ばれています。まばらにしかないので
+座標そのものに価値があり、ひとまとめにするためにマトリクスやシーケンス
+が使われます。密な点は密集した点のことで、画像はその典型です。点の値に
+価値があり、点の値はその座標が示す場所に格納されています。
+
+OpenCV の関数の中には、疎な点と密な点のそれぞれについて同じ操作をする関
+数があります。たとえば、アフィン変換がそうです。疎な点は cvTransform()
+で変換し、密な点は cvWarpAffine() で変換します。点の違いは利用者が使う
+関数で決まります。
+
+疎な点のアフィン変換を考えてみましょう。
+
+ my $transmat = Cv->getAffineTransform(\@points_src, \@points_dst);
+ my $dst = Cv->Transform([ $pt1, $pt2, ... ], $transmat);               # (1)
+ my @dst = Cv->Transform([ $pt1, $pt2, ... ], $transmat);               # (1')
+ Cv->Transform([ $pt1, $pt2, ... ], my $dst, $transmat);                # (2)
+
+この (1)、(2) は Perl の配列、つまり疎な点を変換します。ただ、この
+cvTransform() は、Nx1 や 1xN のリストのようなマトリクスを変換するという
+よりは、次の (3)、(4) の使い方が本来のものです。
+
+ my $arr = Cv::Mat->new(...);
+ my $arr_transe = $arr->Transform($transmat);                           # (3)
+ $arr->Transform(my arr_trans, $transmat);                              # (4)
+
+使い方について考えると、(1)、(2) は、Perl の点の配列を OpenCV の Nx1 や
+1xN のマトリクスに直して使うところで便利だと思います。(3)、(4) は、幾何
+学変換、色空間の変換、画像チャンネルの入れ替えなど様々な場面で便利でしょ
+う。そして更に密な点を扱う cvWarpAffine() があり、少し混乱させられます。
+
+ my $arr_affine = $arr->warpAffine($transmat);                          # (5)
+ $arr->warpAffine(my $arr_affine, $transmat);                           # (6)
+
+どうまとめましょうか、、、
+
+
+=head3 補足: OpenCVの点
+
+OpenCV には様々な点があります。それは次の構造体で表わされます。
+
+  CvPoint, CvPoint2D32f, CvPoint3D32f, CvPoint2D64f, CvPoint3D64f
+
+これらの構造体は、その名前のはじめの文字を小文字にしたコンストラクタで
+作ることができます。
+
+  my $pt2d = cvPoint($x, $y);
+  my $pt3d = cvPoint3d32f($x, $y, $z);
+
+これらのコンストラクタが作る点は、単に構造体のメンバを並べた配列であり、
+次に示すものとほとんど同じものです。
+
+  [ $x, $y ]
+  [ $x, $y, $z ]
+
+この配列による表現は、CvPoint が作る点だけでなくそうでないものも表現で
+きます。点でないものを誤りと考えることもできますが、そこには何かもっと
+役に立つものがあるかもしれません。
+
+=head2 メソッドに歩み寄ってもらう
+
+ここまでは、Perl の配列と OpenCV のマトリクスの変換を簡単にして、主に
+OpenCV の関数に渡す引数を簡単に作るということを考えてきました。次は、
+OpenCV の関数、すなわち C<Cv> のメソッドの方に歩み寄ってもらい、Perl の
+点の配列を受け取れるように考えて行きましょう。
+
+=head3 C言語の面影かな
+
+細部について考える前に、点のリストを入力にするメソッドを C<Cv> の実装か
+ら集めてみましょう。
+
+ my $rect = Cv->boundingRect(\@points, $update);
+ Cv->fitLine(\@points, $dist_type, $param, $reps, $aeps, my $line);
+ my $box = Cv->fitEllipse2(\@points);
+ my $box = Cv->minAreaRect2(\@points);
+ Cv->minEnclosingCircle(\@points, my $center, my $radius);
+ my $s = Cv->ContourArea(\@points);
+
+結果を引数で受けとる関数があるのは、結果が複数あるとき戻り値だけで済ま
+なかったのでしょう。たとえば、C<MinEnclosingCircle()> は、 $center と
+$radius の 2つを返したいが、できなかった。そういう感じです。これは、C言
+語の戻り値の制約によるものですが、Perl はそうではありません。次のとおり
+書くことができます。
+
+ my ($vx, $vy, $x0, $y0) = Cv->FitLine(\@points, ...);
+ my ($center, $radius) = Cv->minEnclosingCircle(\@points);
+
+=head3 歩み寄りの歩み寄り
+
+簡単に〜、使いやすく〜、というのは C<Cv::More> の目標ですが、いままでに
+作ったプログラムが動かなくなるかもしれません。いや、きっと動かなくなる
+でしょう。迷惑な話です。
+
+たとえば、MiAreaRect() は、いままで呼び出されたコンテクストに関係なく、
+いつでもスカラを返していたので、呼ばれたコンテクストに合わせた戻り値を
+返すように、正しいと思う変更を加えるとしましょう。それは、役に立つかも
+しれませんが、動いていた MinAreaRect() は動かなくなります。
+
+  Cv->boxPoints(Cv->minAreaRect(\@points));    # いままで動いていたのに
+  Cv->boxPoints(scalar Cv->minAreaRect(\@points));  # 少し書き直し ...
+
+簡単にしよう。良くしよう。そう思ったのに、面倒くさいことになってしまい
+ました。やはりインターフェースの変更は厄介ですね。というわけで、コンテ
+クトに合わせた戻値を使うときには、次のとおり使いたい人がそれを明示した
+ときにだけ使えるようにしましょう。
+
+  use Cv::More qw(cs);                 # コンテクトに合った戻値を使う
+  use Cv::More qw(cs-warn);            # その前に危いところを調べる
+
+2行目の cs-warn は、コンテクストに合わせた戻値を使うと動かなくなる可能
+性のあるところ、つまりリストコンテクストでスカラを返すような場面を実行
+時にみつけたときメッセージを出力します。はじめに、2行目の cs-warn で確
+認して、その後、1行目の cs を指定することにしましょう。
+
+もし全体でこのような変更を加える場合はいいですが、そうでないときには、
+import() と unimport() でごまかすことに、、、
+
+  Cv::More->import(qw(cs));
+  Cv::More->unimport(qw(cs));
+
+
+=head2 エラー処理
+
+  Cv->setErrMode(1);
+
+
+=head2 追加または拡張したメソッド
+
+=head3 Perlの配列を使うメソッド
+
+=over
+
+=item FitEllipse2()
+
+ my $box2d = Cv->FitEllipse2($points);
+
+戻り値は CvBox2D です。cs のときには、リストコンテクストで呼ばれると、
+次のとおり要素が展開されます。
+
+ use Cv::More qw(cs);
+ my ($center, $size, $angle) = Cv->FitEllipse2($points);
+
+Perl のリストで表わした点と、それを FitEllipse2() で処理した結果を描き
+表示するサンプルを示します。
+
+ my $img = Cv::Image->new([250, 250], CV_8UC3)->fill(cvScalarAll(255));
+ $img->origin(1);
+ my @pts = (map { [ map { $_ / 4 + rand $_ / 2 } @{$img->size} ] } 1 .. 20);
+ $img->circle($_, 3, &color, 1, CV_AA) for @pts;
+ my $box = Cv->fitEllipse(\@pts);
+ $img->polyLine([[Cv->boxPoints($box)]], -1, &color, 1, CV_AA);
+ $img->ellipseBox($box, &color, 1, CV_AA);
+ $img->show("FitEllipse2");
+ Cv->waitKey;
+ sub color { [ map { rand 255 } 1 .. 3 ] }
+
+
+=item FitLine()
+
+FitLine() には、次の 2つの呼出し形式があります。Perl では (1) の使い方
+になると思いますが、OpenCV の C言語のインターフェースに合わせた (2) の
+使い方もできます。
+
+ my $line = Cv->FitLine($points, $dist_type, $param, $reps, $aeps);     # (1)
+ Cv->FitLine($points, $dist_type, $param, $reps, $aeps, my $line);      # (2)
+
+パラメータはたくさんありますが、$points 以外は省略できます。入力
+$points は、2次元の点または 3次元の点のリストで、結果は、この $points
+の次元数で決まります。
+
+ my $points2d = [ [$x1, $y1], [$x2, $y2], ... ];
+ my ($vx, $vy, $x0, $y0) = Cv->FitLine($points2d, ...);
+ my $points3d = [ [$x1, $y1, $z1], [$x2, $y2, $z2], ... ];
+ my ($vx, $vy, $vz, $x0, $y0, $z0) = Cv->FitLine($points3d, ...);
+
+いくつかの点の集りにフィッティングさせた直線を描いてみましょう。
+
+ my @pts = ([ 50, 50 ], [ 100, 120 ], [ 150, 150 ], [ 200, 150 ]);
+ my ($vx, $vy, $x0, $y0) = Cv->fitLine(\@pts); 
+ $img->line((map { [ $_, $vy / $vx * ($_ - $x0) + $y0 ] } 20, 230),
+			cvScalarAll(200), 3, CV_AA);
+
+サンプルのはじめと終りは C<FitEllipse2()> を参照してください。
+
+
+=item MinAreaRect2()
+
+ my $box2d = Cv->MinAreaRect2($points);
+ my ($center, $size, $angle) = Cv->MinAreaRect2($points);
+
+戻り値は CvBox2D です。FitEllipse2() と同じような結果を返しますが。重ね
+合わせてみると違いが分ります。
+
+ for ([ [ Cv->fitEllipse(\@pts)  ], [ 200, 200, 200 ] ],
+      [ [ Cv->minAreaRect(\@pts) ], [ 100, 100, 255 ] ]) {
+   $img->polyLine([[Cv->boxPoints($_->[0])]], -1, $_->[1], 1, CV_AA);
+   $img->ellipseBox($_->[0], $_->[1], 1, CV_AA);
+ }
+
+サンプルのはじめと終りは C<FitEllipse2()> を参照してください。
+
+C言語のインタフェースは次のとおり。メモリストレージを渡すこともできます。
+
+ CvBox2D cvMinAreaRect2(const CvArr* points, CvMemStorage* storage=NULL)
+
+Cv-0.15 までは、Perl の点のリストを Cv::Seq::Point にして使っていました。
+そのときはメモリストレージを使っていました。しかし、Cv-0.16 で Perl の
+点のリストを Cv::Mat に直したので、メモリストレージは使いません。
+
+
+=item MinEnclosingCircle()
+
+ my $circle = Cv->MinEnclosingCircle($points);                          # (1)
+ my ($center, $radius) = Cv->MinEnclosingCircle($points);               # (1')
+ Cv->MinEnclosingCircle($points, my $center, my $radius);               # (2)
+
+戻り値は、円の中心の座標 $center と半径 $radius です。CvBox2D の形に合
+わせて重ね合わせてみましょう。
+
+ my $rectangle = Cv->minAreaRect2(\@pts);
+ my $ellipse = Cv->fitEllipse2(\@pts);
+ my ($center, $radius) = Cv->minEnclosingCircle(\@pts);
+ my $circle = [ $center, [ ($radius * 2) x 2 ], 0 ];
+ for ([ $rectangle, [ 200, 200, 200 ] ],
+      # [ $ellipse,   [ 200, 200, 200 ] ],
+      [ $circle,    [ 100, 100, 255 ] ]) {
+   $img->polyLine([[Cv->boxPoints($_->[0])]], -1, $_->[1], 1, CV_AA);
+   $img->ellipseBox($_->[0], $_->[1], 1, CV_AA);
+ }
+
+サンプルで使った乱数による点のリストを処理してもあまり面白くないかもし
+れませね。点が表わすものを C<FitEllipse2()>, C<FitLine()>,
+C<MinAreaRect2()>, C<MinEnclosingCircle()> の中から元の形に合うものを選
+ぶといいでしょう。サンプルはどれも似ているので、そのはじめと終りは
+C<FitEllipse2()> から持って来てください。
+
+(注意) MinEnclosingCircle() の戻り値は、Cv-0.15 まで (1') の形式でした。
+つまり、いつも ($center, $radius) を返していました。しかし、Cv-0.16 で
+メソッドの戻り値を揃え [$center, $radius] を返すことにしました。
+
+=item BoundingRect()
+
+ my $rect = Cv->BoundingRect($points)
+ my ($x, $y, $width, $height) = Cv->BoundingRect($points)
+
+点を囲む傾いていない矩形を求めます。傾いている矩形には
+C<MinAreaRect2()> を使います。戻り値は CvRect なので、CvBox2D に直すと
+C<EllipseBox()> や C<BoxPoints()> とのつながりが良くなります。
+CvRect から CvBox2D への変換は次のとおり。
+
+ my $box2d = [ [ $x + $width / 2, $y + $height / 2 ], [ $width, $height ], 0 ];
+
+
+=item ContourArea()
+
+ my $s = Cv->ContourArea($points)
+ my $s = Cv->ContourArea($points, $slice)
+
+点で囲まれる領域の面積を求めます。
+
+ my @pts = ([100, 100], [100, 200], [200, 200], [200, 100]);
+ my $s = Cv->contourArea(\@pts);
+
+この面積 $s は、縦x横 (100x100) になります。
+
+
+=item Transform()
+
+ my $dst = Cv->Transform([ $pt1, $pt2, ... ], $transmat);               # (1)
+ my @dst = Cv->Transform([ $pt1, $pt2, ... ], $transmat);               # (1')
+ Cv->Transform([ $pt1, $pt2, ... ], my $dst, $transmat);                # (2)
+
+ my @points = ( [$x1, $y1], [$x2, $y2], ... );
+ my $arr = Cv::Mat->new([], CV_32FC2, @points);
+ my $dst = $arr->Transform($transmat);                                  # (3)
+ $arr->Transform(my $dst, $transmat);                                   # (4)
+
+ my $dst = $arr->WarpAffine($transmat);                                 # (5)
+ $arr->warpTransform(my $dst, $transmat);                               # (6)
+
+
+=item Affine()
+
+GetQuadrangleSubPix() を使って、画像やマトリクスの回転と縮小を行います。
+
+  my $mapMatrix = [ [ $A11, $A12, $b1 ],
+                    [ $A21, $A22, $b2 ] ];
+  my $dst = $src->Affine($mapMatrix);
+
+この Affine() は、GetQuadrangleSubPix() の変換行列を作るのが面倒だった
+ので、その対処として作ったものです。拡張した new() を使えば次の書き方で
+も同じことができます。
+
+  $src->GetQuadrangleSubPix(
+          Cv::Mat->new([], &Cv::CV_32FC1,
+                       [ $A11, $A12, $b1 ],
+                       [ $A21, $A22, $b2 ],
+                       ));
+
+こうしてみると、考えずに Affine() のようなものを作るのは良くないことで、
+GetQuadrangleSubPix() が $mapMatrix に C<Cv::Mat> と Perl の配列のどち
+らでも扱えるようにするのが良かったと分りました。これもそのうちに考えて
+みることにします。
+
+=item new()
+
+=item m_new()
+
+OpenCV の画像やマトリクスのオブジェクトは、大きさと要素の型を指定して作
+ります。C<Cv::Createなんとか()> か C<Cv::なんとか::new()> で作ります。
+C<m_new()> は、C<Cv::なんとか::new()> を再定義し、初期値を扱えるように
+拡張します。
+
+ my $mat1 = Cv::Mat->new([], 要素の型, 初期値のリスト);
+ my $mat2 = Cv::Mat->new(マトリクスの大きさ, 要素の型);
+ my $mat3 = $mat->new();
+ my $mat4 = $mat->new(マトリクスの大きさ);
+ my $mat5 = $mat->new(要素の型);
+
+C<m_new()> が拡張するのは、上の C<$mat1> を作る例です。マトリクスの大き
+さを指定するところに C<[]> を指定します。具体的な使い方については、
+L</Perlの配列でマトリクスを作る> を参照してください。他の例は、いまの
+C<Cv> の C<new()> でもできます。
+
+
+=item Set()
+
+=item m_set()
+
+ $mat->Set($index, $value);
+
+$index は配列のリファレンスで、より具体的に次のとおり書くことができます。
+
+ $mat->Set([], $value);       # マトリクス $mat 全体に $value を代入する
+ $mat->Set([$i], $value);     # マトリクス $mat の $i 行に〜
+ $mat->Set([$i, $j], $value); # マトリクス $mat の $i 行 $j 列に〜
+
+このように C<m_set()> は C<Set()> を拡張し、C<Set()> が 要素を 1つずつ
+代入していたところで、要素をひとまとめに代入することを可能にします。
+
+それは、C<$index> で指定されたマトリクスの要素の数と C<$value> で指定さ
+れた要素の値の数のバランスがとれるように、C<$index> を補うか C<$value>
+をばらし、そして、マトリクスの要素に値を 1つずつ代入するというものです。
+インデクス C<$index> が C<$mat> の要素を特定するために十分でないときは、
+足りないインデクスを補うために、C<$value> が値のリストなら C<$value> を
+ばらして 1つずつ C<m_set()> で再帰的に処理します。つまり、
+
+ $mat->m_set([@$index, $_], $value->[$_]) for 0 .. $#{$value};
+
+そうでない (C<$value> をばらせない) ときは、次のとおり単にインデクスに
+0 を補います。正確には、Nx1 のマトリクスの x1 のインデクスに相当する部
+分を 0 で補うのがいいと思いますが、次に示す手抜きでも十分でしょう。
+
+ $mat->m_set([@$index, 0], $value);
+
+
+=item ToArray()
+
+ my @array = $arr->ToArray();                                           # (1)
+ my @array = $arr->ToArray($slice);                                     # (2)
+
+シーケンスまたはマトリクス (1xN, Nx1) を Perl の点の配列に変換します。
+シーケンスを変換する cvCvtSeqToArray() をマトリクスも変換できるように拡
+張したものです。従って、範囲を与える $slice を指定することができます。
+これは、cvSlice() で作るか、単にはじめ $start と終り $end を対にした配
+列のリファレンス [$start, $end] で表わすことができます。省略したときは
+$arr のすべての要素を変換します。
+
+cvCvtSeqToArray() を元にしたので同じ呼出し形式も使えます。つまり、次の
+使い方もできます。でも使わないかもしれませんね。
+
+ $arr->ToArray(\my @array);
+ $arr->ToArray(\my @attay, $slice);
+
+(注意) Perl の配列のようにインデクスに負数が使えると便利なことがありま
+すが、これはできません。そのうち考えてみようと思っています。
+
+ my @array = $arr->ToArray([ -1, 1 ]);
+ my @array = $arr->ToArray([ 1, -1 ]);
+
+=back
+
+
+=head3 その他のメソッド
+
+=over
+
+=item GetBuildInformation()
+
+  my $info = Cv->GetBuildInformation()
+  my %info = Cv->GetBuildInformation()
+
+OpenCV 2.4.0 からビルド時の情報が取り出せるます。コンテクトがスカラなら
+cv::getBuildInformation() の戻り値を返し、リストなら次のような結果を返
+します。
+
+  'OpenCV modules' => {
+	'Disabled by dependency' => '-',
+	'Unavailable' => 'androidcamera java ocl',
+	'Disabled' => 'world',
+	'To be built' => 'core imgproc flann highgui features2d calib3d ml video objdetect contrib nonfree photo legacy gpu python stitching ts videostab'
+  },
+  'Version control' => 'commit:6484732',
+  'Linker flags (Debug)' => {
+	'Precompiled headers' => 'YES'
+  },
+  ...
+
+これは、C<HasModule()> でOpenCV で利用可能なモジュールを確認するために
+使用しています。
+
+=item HasModule()
+
+ my $hasCore = Cv->HasModule('core');
+
+OpenCV がどのようなモジュールを有効にしてビルドされたかを返します。
+
+=back
+
+=head1 バグ
+
+=over
+
+=item *
+
+=back
+
+=head1 参考
+
+L<Cv::Nihongo|Cv::Nihongo>
+
+=head1 著作権
+
+Yuta MASUDA E<lt>yuta.masuda@newdaysys.co.jpE<gt>
+
+Copyright (c) 2012 by Yuta MASUDA.
+
+All rights reserved. This program is free software; you can
+redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

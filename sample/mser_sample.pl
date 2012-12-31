@@ -2,8 +2,8 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use strict;
+use warnings;
 use lib qw(blib/lib blib/arch);
-
 use Cv;
 use File::Basename;
 
@@ -34,50 +34,54 @@ my @bcolors = (
 	);
 
 my $path = shift || dirname($0) . "/puzzle.png";
-my $img = Cv->LoadImage($path, CV_LOAD_IMAGE_GRAYSCALE);
+my $img = Cv->loadImage($path, CV_LOAD_IMAGE_GRAYSCALE);
 die "Usage: mser_sample <path_to_image>\n" unless $img;
 
-my $rsp = Cv->LoadImage($path, CV_LOAD_IMAGE_COLOR);
-my $ellipses = $img->CvtColor(CV_GRAY2BGR);
-my $hsv = $rsp->CvtColor(CV_BGR2YCrCb);
+my $rsp = Cv->loadImage($path, CV_LOAD_IMAGE_COLOR);
+my $ellipses = $img->cvtColor(CV_GRAY2BGR);
+my $hsv = $rsp->cvtColor(CV_BGR2YCrCb);
 
 my $params = cvMSERParams();
 # my $params = cvMSERParams(5, 60, cvRound(0.2 * $img->width * $img->height), 0.25, 0.2);
 
-my $storage= Cv::MemStorage->new;
-my $t = Cv->GetTickCount();
-Cv::Arr::cvExtractMSER($hsv, \0, my $contours, $storage, $params);
-$t = Cv->GetTickCount() - $t;
+my $mask = $img->new(CV_8UC1)->fill(cvScalarAll(255))->rectangle(
+	[ 0, 0 ], [ $img->width - 1, $img->height - 1 ], [ 0 ], 5,
+	);
+
+my $storage= Cv->createMemStorage;
+my $t = Cv->getTickCount();
+$hsv->extractMSER($mask, my $contours, $storage, $params);
+bless $contours, 'Cv::Seq::Seq';
+$t = Cv->getTickCount() - $t;
 printf "MSER extracted %d contours in %g ms.\n",
-	$contours->total, $t/(Cv->GetTickFrequency()*1000);
+	$contours->total, $t/(Cv->getTickFrequency()*1000);
 
 # draw mser with different color
 foreach my $i (0 .. $contours->total - 1) {
 	my $c = $bcolors[$i % @bcolors];
-	my $r = $contours->GetSeq($i);
+	my $r = bless $contours->get($i), 'Cv::Seq::Point';
 	foreach my $j (0 .. $r->total - 1) {
-		my $pt = $r->GetPoint($j);
-		$rsp->Circle($pt, 1, $c);
+		my $pt = $r->get($j);
+		$rsp->circle($pt, 1, $c);
 	}
 }
 
 # find ellipse ( it seems cvfitellipse2 have error or sth?
 foreach my $i (0 .. $contours->total - 1) {
-	my $r = $contours->GetSeq($i);
-	my $box = $r->FitEllipse;
-	# $box->[4] = CV_PI()/2 - $box->[4];
+	my $r = $contours->get($i);
+	my $box = $r->fitEllipse;
 	$ellipses->ellipseBox($box, $colors[int rand @colors], 3);
 }
 
 # $rsp->SaveImage("rsp.png");
 
-Cv->NamedWindow("original", 0);
-$img->ShowImage("original");
+Cv->namedWindow("original", 0);
+$img->showImage("original");
 
-Cv->NamedWindow("response", 0);
-$rsp->ShowImage("response");
+Cv->namedWindow("response", 0);
+$rsp->showImage("response");
 
-Cv->NamedWindow("ellipses", 0);
-$ellipses->ShowImage("ellipses");
+Cv->namedWindow("ellipses", 0);
+$ellipses->showImage("ellipses");
 
-Cv->WaitKey(0);
+Cv->waitKey(0);

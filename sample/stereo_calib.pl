@@ -31,11 +31,11 @@
 # ************************************************** */
 
 use strict;
-use lib qw(blib/lib blib/arch);
-
+use warnings;
 use IO::File;
 use File::Basename;
 use List::Util qw(max min);
+use lib qw(blib/lib blib/arch);
 use Cv;
 
 &StereoCalib("stereo_calib.txt", 9, 6, 1);
@@ -63,7 +63,6 @@ sub StereoCalib {
 	my $f = new IO::File join('/', dirname($0), $imageList), "r";
 	die "can not open file $imageList\n" unless ($f);
 
-	my $nframes;
 	my $n = $nx * $ny;
 	my $N = 0;
 	my @imageNames = ([ ], [ ]);

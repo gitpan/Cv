@@ -10,10 +10,10 @@
 #
 
 use strict;
-use lib qw(blib/lib blib/arch);
-
+use warnings;
 use IO::File;
 use Time::HiRes qw(gettimeofday);
+use lib qw(blib/lib blib/arch);
 use Cv;
 
 sub saveXYZ {
@@ -227,7 +227,7 @@ if ($alg == $alg{bm}) {
 		);
 }
 $t = gettimeofday() - $t;
-printf("Time elapsed: %fms\n", $t);
+printf("Time elapsed: %.3fs\n", $t);
 
 my $disp8 = $disp->convertScale(
 	$disp->new(CV_8U), 255/($numberOfDisparities*16)
