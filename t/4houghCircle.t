@@ -1,38 +1,37 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4 -*-
 
 use strict;
-use Test::More qw(no_plan);
-# use Test::More tests => 13;
-
-BEGIN {
-	use_ok('Cv');
-	use_ok('Cv::Seq::Circle');
-}
+use warnings;
+# use Test::More qw(no_plan);
+use Test::More tests => 10;
+BEGIN { use_ok('Cv::Test') }
+BEGIN { use_ok('Cv') }
 
 my $verbose = Cv->hasGUI;
 
-# my $filename = @ARGV > 0? shift : dirname($0).'/'."baboon.jpg";
-# my $img = Cv->loadImage($filename, 1)
-#	or die "$0: can't loadimage $filename\n";
+my $src = Cv::Mat->new([240, 320], CV_8UC1);
+$src->zero;
+my ($x0, $y0) = (100, 80);
+$src->circle([$x0, $y0], 30, cvScalarAll(255), 10);
+my ($x1, $y1) = ($x0 + 120, $y0);
+$src->rectangle([$x1 - 30, $y1 - 30], [$x1 + 30, $y1 + 30],
+				cvScalarAll(255), 10);
+my ($x2, $y2) = ($x1 - 50, $y0 + 80);
+$src->polyLine([ [ [$x2 - 30, $y2 + 30], [$x2 + 30, $y2 + 30],
+				   [$x2, $y2 - 30], ], ], -1, cvScalarAll(255), 10);
+my $img = $src->cvtColor(CV_GRAY2RGB);
 
-my $img = Cv->createImage([320, 240], 8, 3)->zero;
-$img->circle([120 + rand(80),  40 + rand(80)], 20 + rand(60),
-			 cvScalarAll(200), 5);
-$img->circle([200 + rand(80), 120 + rand(80)], 20 + rand(60),
-			 cvScalarAll(200), 5);
-
-# my $gray = $img->cvtColor(CV_BGR2GRAY)->smooth(CV_GAUSSIAN, 9, 9);
 my $gray = $img->cvtColor(CV_BGR2GRAY)->smooth(CV_GAUSSIAN, 5, 5);
-
 my $storage = Cv->createMemStorage;
 my $circles = bless $gray->houghCircles(
-	$storage, CV_HOUGH_GRADIENT, 2, $gray->height/4, 200, 100
-	),	"Cv::Seq::Circle";
+	$storage, CV_HOUGH_GRADIENT, 1, 30, 100, 50, 25, 65), "Cv::Seq::Circle";
 can_ok($circles, 'total');
 
-my @circles = $circles->toArray;
-$img->circle($_->[0], 3, CV_RGB(0, 255, 0), 3) for @circles;
-$img->circle($_->[0], $_->[1], CV_RGB(0, 255, 0), 3) for @circles;
+for ($circles->toArray) {
+	my $color = cvScalar(100, 100, 255);
+	$img->circle($_->[0], 3, $color, 3, CV_AA);
+	$img->circle($_->[0], $_->[1], $color, 3, CV_AA);
+}
 if ($circles->total > 0) {
 	my $circle = $circles->getSeqElem(0);
 	my ($center, $radius) = $circles->getSeqElem(0);
@@ -41,7 +40,7 @@ if ($circles->total > 0) {
 	is($circle->[1], $radius);
 }
 
-ok($circles->total >= 1);
+is($circles->total, 1);
 
 $circles->push(my $x = [[10, 20], 30]);
 my $y = $circles->pop();

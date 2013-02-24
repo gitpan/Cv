@@ -4,13 +4,12 @@ use strict;
 # use Test::More tests => 1210;
 use Test::More qw(no_plan);
 BEGIN {
-	use_ok('Cv', -more);
+	use_ok('Cv', -nomore);
 }
 
-use File::Basename;
-
 our %cv;
-# our %CLASS;
+
+use File::Basename;
 use lib dirname($0);
 require "hackcv.pm";
 

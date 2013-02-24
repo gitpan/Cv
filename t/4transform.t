@@ -1,18 +1,11 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4 -*-
 
 use strict;
-use Test::More qw(no_plan);
-# use Test::More tests => 10;
-
-BEGIN {
-	use_ok('Cv');
-}
-
-sub is_gg {
-	my ($a, $b) = splice(@_, 0, 2);
-	unshift(@_, map { sprintf("%g", sprintf("%.7f", $_)) } $a, $b);
-	goto &is;
-}
+use warnings;
+# use Test::More qw(no_plan);
+use Test::More tests => 40;
+BEGIN { use_ok('Cv::Test') }
+BEGIN { use_ok('Cv') }
 
 my $verbose = Cv->hasGUI;
 
@@ -35,18 +28,16 @@ if (1) {
 	}
 	$map = Cv->GetAffineTransform(\@src, \@dst);
 	# print_map($map);
-	is_gg($map->getReal([0, 0]), -1);
-	is_gg($map->getReal([0, 1]), 0);
-	is_gg($map->getReal([0, 2]), 320);
-	is_gg($map->getReal([1, 0]), 0);
-	is_gg($map->getReal([1, 1]), -1);
-	is_gg($map->getReal([1, 2]), 240);
+	is_({ round => "%.7f" }, $map->getReal([0, 0]), -1);
+	is_({ round => "%.7f" }, $map->getReal([0, 1]), 0);
+	is_({ round => "%.7f" }, $map->getReal([0, 2]), 320);
+	is_({ round => "%.7f" }, $map->getReal([1, 0]), 0);
+	is_({ round => "%.7f" }, $map->getReal([1, 1]), -1);
+	is_({ round => "%.7f" }, $map->getReal([1, 2]), 240);
 }
 
 
-# ============================================================
 #  cvTransform(CvArr* src, CvArr* dst, CvMat* transmat, CvMat* shiftvec)
-# ============================================================
 
 if (2) {
 	my $src2 = Cv::Mat->new([], &Cv::CV_32FC2, @src);

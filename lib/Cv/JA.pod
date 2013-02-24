@@ -1,0 +1,549 @@
+# -*- mode: pod; coding: utf-8; tab-width: 4; -*-
+
+=encoding utf8
+
+=head1 Name
+
+Cv::JA - 日本語ドキュメントと小さな断片
+
+=head1 DESCRIPTION
+
+Cv::JA は、日本語のドキュメント、あるいは、ドキュメントになる前のメモや
+アイディアのようなものです。
+
+=head1 Cv::More
+
+C<Cv::More> は、L<Cv> から実験的な機能を切り離して整理するためのパッケー
+ジです。C<Cv> が拡張しやすくなると考えています。C<Cv::More> は、C<Cv>
+の一部を切り離したものなので、使わないことを明示しない限り取り込みます。
+
+ use Cv;              # Cv::More を使う
+ use Cv qw(:nomore);  # Cv::More を使わない
+ use Cv -more;        # Cv::More を使う
+ use Cv -nomore;      # Cv::More を使わない
+
+=head2 Perlの配列を使うメソッド
+
+=over
+
+=item FitEllipse2()
+
+ my $box2d = Cv->FitEllipse2($points);
+
+戻り値は CvBox2D です。cs のときには、リストコンテクストで呼ばれると、
+次のとおり要素が展開されます。
+
+ use Cv::More qw(cs);
+ my ($center, $size, $angle) = Cv->FitEllipse2($points);
+
+Perl のリストで表わした点と、それを FitEllipse2() で処理した結果を描き
+表示するサンプルを示します。
+
+ my $img = Cv::Image->new([250, 250], CV_8UC3)->fill(cvScalarAll(255));
+ $img->origin(1);
+ my @pts = (map { [ map { $_ / 4 + rand $_ / 2 } @{$img->size} ] } 1 .. 20);
+ $img->circle($_, 3, &color, 1, CV_AA) for @pts;
+ my $box = Cv->fitEllipse(\@pts);
+ $img->polyLine([[Cv->boxPoints($box)]], -1, &color, 1, CV_AA);
+ $img->ellipseBox($box, &color, 1, CV_AA);
+ $img->show("FitEllipse2");
+ Cv->waitKey;
+ sub color { [ map { rand 255 } 1 .. 3 ] }
+
+
+=item FitLine()
+
+FitLine() には、次の 2つの呼出し形式があります。Perl では (1) の使い方
+になると思いますが、OpenCV の C言語のインターフェースに合わせた (2) の
+使い方もできます。
+
+ my $line = Cv->FitLine($points, $dist_type, $param, $reps, $aeps);     # (1)
+ Cv->FitLine($points, $dist_type, $param, $reps, $aeps, my $line);      # (2)
+
+パラメータはたくさんありますが、$points 以外は省略できます。入力
+$points は、2次元の点または 3次元の点のリストで、結果は、この $points
+の次元数で決まります。
+
+ my $points2d = [ [$x1, $y1], [$x2, $y2], ... ];
+ my ($vx, $vy, $x0, $y0) = Cv->FitLine($points2d, ...);
+ my $points3d = [ [$x1, $y1, $z1], [$x2, $y2, $z2], ... ];
+ my ($vx, $vy, $vz, $x0, $y0, $z0) = Cv->FitLine($points3d, ...);
+
+いくつかの点の集りにフィッティングさせた直線を描いてみましょう。
+
+ my @pts = ([ 50, 50 ], [ 100, 120 ], [ 150, 150 ], [ 200, 150 ]);
+ my ($vx, $vy, $x0, $y0) = Cv->fitLine(\@pts); 
+ $img->line((map { [ $_, $vy / $vx * ($_ - $x0) + $y0 ] } 20, 230),
+			cvScalarAll(200), 3, CV_AA);
+
+サンプルのはじめと終りは C<FitEllipse2()> を参照してください。
+
+
+=item MinAreaRect2()
+
+ my $box2d = Cv->MinAreaRect2($points);
+ my ($center, $size, $angle) = Cv->MinAreaRect2($points);
+
+戻り値は CvBox2D です。FitEllipse2() と同じような結果を返しますが。重ね
+合わせてみると違いが分ります。
+
+ for ([ [ Cv->fitEllipse(\@pts)  ], [ 200, 200, 200 ] ],
+      [ [ Cv->minAreaRect(\@pts) ], [ 100, 100, 255 ] ]) {
+   $img->polyLine([[Cv->boxPoints($_->[0])]], -1, $_->[1], 1, CV_AA);
+   $img->ellipseBox($_->[0], $_->[1], 1, CV_AA);
+ }
+
+サンプルのはじめと終りは C<FitEllipse2()> を参照してください。
+
+C言語のインタフェースは次のとおり。メモリストレージを渡すこともできます。
+
+ CvBox2D cvMinAreaRect2(const CvArr* points, CvMemStorage* storage=NULL)
+
+Cv-0.15 までは、Perl の点のリストを Cv::Seq::Point にして使っていました。
+そのときはメモリストレージを使っていました。しかし、Cv-0.16 で Perl の
+点のリストを Cv::Mat に直したので、メモリストレージは使いません。
+
+
+=item MinEnclosingCircle()
+
+ my $circle = Cv->MinEnclosingCircle($points);                          # (1)
+ my ($center, $radius) = Cv->MinEnclosingCircle($points);               # (1')
+ Cv->MinEnclosingCircle($points, my $center, my $radius);               # (2)
+
+戻り値は、円の中心の座標 $center と半径 $radius です。CvBox2D の形に合
+わせて重ね合わせてみましょう。
+
+ my $rectangle = Cv->minAreaRect2(\@pts);
+ my $ellipse = Cv->fitEllipse2(\@pts);
+ my ($center, $radius) = Cv->minEnclosingCircle(\@pts);
+ my $circle = [ $center, [ ($radius * 2) x 2 ], 0 ];
+ for ([ $rectangle, [ 200, 200, 200 ] ],
+      # [ $ellipse,   [ 200, 200, 200 ] ],
+      [ $circle,    [ 100, 100, 255 ] ]) {
+   $img->polyLine([[Cv->boxPoints($_->[0])]], -1, $_->[1], 1, CV_AA);
+   $img->ellipseBox($_->[0], $_->[1], 1, CV_AA);
+ }
+
+サンプルで使った乱数による点のリストを処理してもあまり面白くないかもし
+れませね。点が表わすものを C<FitEllipse2()>, C<FitLine()>,
+C<MinAreaRect2()>, C<MinEnclosingCircle()> の中から元の形に合うものを選
+ぶといいでしょう。サンプルはどれも似ているので、そのはじめと終りは
+C<FitEllipse2()> から持って来てください。
+
+(注意) MinEnclosingCircle() の戻り値は、Cv-0.15 まで (1') の形式でした。
+つまり、いつも ($center, $radius) を返していました。しかし、Cv-0.16 で
+メソッドの戻り値を揃え [$center, $radius] を返すことにしました。
+
+=item BoundingRect()
+
+ my $rect = Cv->BoundingRect($points)
+ my ($x, $y, $width, $height) = Cv->BoundingRect($points)
+
+点を囲む傾いていない矩形を求めます。傾いている矩形には
+C<MinAreaRect2()> を使います。戻り値は CvRect なので、CvBox2D に直すと
+C<EllipseBox()> や C<BoxPoints()> とのつながりが良くなります。
+CvRect から CvBox2D への変換は次のとおり。
+
+ my $box2d = [ [ $x + $width / 2, $y + $height / 2 ], [ $width, $height ], 0 ];
+
+
+=item ContourArea()
+
+ my $s = Cv->ContourArea($points)
+ my $s = Cv->ContourArea($points, $slice)
+
+点で囲まれる領域の面積を求めます。
+
+ my @pts = ([100, 100], [100, 200], [200, 200], [200, 100]);
+ my $s = Cv->contourArea(\@pts);
+
+この面積 $s は、縦x横 (100x100) になります。
+
+
+=item Transform()
+
+ my $dst = Cv->Transform([ $pt1, $pt2, ... ], $transmat);               # (1)
+ my @dst = Cv->Transform([ $pt1, $pt2, ... ], $transmat);               # (1')
+ Cv->Transform([ $pt1, $pt2, ... ], my $dst, $transmat);                # (2)
+
+ my @points = ( [$x1, $y1], [$x2, $y2], ... );
+ my $arr = Cv::Mat->new([], CV_32FC2, @points);
+ my $dst = $arr->Transform($transmat);                                  # (3)
+ $arr->Transform(my $dst, $transmat);                                   # (4)
+
+ my $dst = $arr->WarpAffine($transmat);                                 # (5)
+ $arr->warpTransform(my $dst, $transmat);                               # (6)
+
+
+=item Affine()
+
+GetQuadrangleSubPix() を使って、画像やマトリクスの回転と縮小を行います。
+
+  my $mapMatrix = [ [ $A11, $A12, $b1 ],
+                    [ $A21, $A22, $b2 ] ];
+  my $dst = $src->Affine($mapMatrix);
+
+この Affine() は、GetQuadrangleSubPix() の変換行列を作るのが面倒だった
+ので、その対処として作ったものです。拡張した new() を使えば次の書き方で
+も同じことができます。
+
+  $src->GetQuadrangleSubPix(
+          Cv::Mat->new([], &Cv::CV_32FC1,
+                       [ $A11, $A12, $b1 ],
+                       [ $A21, $A22, $b2 ],
+                       ));
+
+こうしてみると、考えずに Affine() のようなものを作るのは良くないことで、
+GetQuadrangleSubPix() が $mapMatrix に C<Cv::Mat> と Perl の配列のどち
+らでも扱えるようにするのが良かったと分りました。これもそのうちに考えて
+みることにします。
+
+=item new()
+
+=item m_new()
+
+OpenCV の画像やマトリクスのオブジェクトは、大きさと要素の型を指定して作
+ります。C<Cv::Createなんとか()> か C<Cv::なんとか::new()> で作ります。
+C<m_new()> は、C<Cv::なんとか::new()> を再定義し、初期値を扱えるように
+拡張します。
+
+ my $mat1 = Cv::Mat->new([], 要素の型, 初期値のリスト);
+ my $mat2 = Cv::Mat->new(マトリクスの大きさ, 要素の型);
+ my $mat3 = $mat->new();
+ my $mat4 = $mat->new(マトリクスの大きさ);
+ my $mat5 = $mat->new(要素の型);
+
+C<m_new()> が拡張するのは、上の C<$mat1> を作る例です。マトリクスの大き
+さを指定するところに C<[]> を指定します。具体的な使い方については、
+L</Perlの配列でマトリクスを作る> を参照してください。他の例は、いまの
+C<Cv> の C<new()> でもできます。
+
+
+=item Set()
+
+=item m_set()
+
+ $mat->Set($index, $value);
+
+$index は配列のリファレンスで、より具体的に次のとおり書くことができます。
+
+ $mat->Set([], $value);       # マトリクス $mat 全体に $value を代入する
+ $mat->Set([$i], $value);     # マトリクス $mat の $i 行に〜
+ $mat->Set([$i, $j], $value); # マトリクス $mat の $i 行 $j 列に〜
+
+このように C<m_set()> は C<Set()> を拡張し、C<Set()> が 要素を 1つずつ
+代入していたところで、要素をひとまとめに代入することを可能にします。
+
+それは、C<$index> で指定されたマトリクスの要素の数と C<$value> で指定さ
+れた要素の値の数のバランスがとれるように、C<$index> を補うか C<$value>
+をばらし、そして、マトリクスの要素に値を 1つずつ代入するというものです。
+インデクス C<$index> が C<$mat> の要素を特定するために十分でないときは、
+足りないインデクスを補うために、C<$value> が値のリストなら C<$value> を
+ばらして 1つずつ C<m_set()> で再帰的に処理します。つまり、
+
+ $mat->m_set([@$index, $_], $value->[$_]) for 0 .. $#{$value};
+
+そうでない (C<$value> をばらせない) ときは、次のとおり単にインデクスに
+0 を補います。正確には、Nx1 のマトリクスの x1 のインデクスに相当する部
+分を 0 で補うのがいいと思いますが、次に示す手抜きでも十分でしょう。
+
+ $mat->m_set([@$index, 0], $value);
+
+
+=item ToArray()
+
+ my @array = $arr->ToArray();                                           # (1)
+ my @array = $arr->ToArray($slice);                                     # (2)
+
+シーケンスまたはマトリクス (1xN, Nx1) を Perl の点の配列に変換します。
+シーケンスを変換する cvCvtSeqToArray() をマトリクスも変換できるように拡
+張したものです。従って、範囲を与える $slice を指定することができます。
+これは、cvSlice() で作るか、単にはじめ $start と終り $end を対にした配
+列のリファレンス [$start, $end] で表わすことができます。省略したときは
+$arr のすべての要素を変換します。
+
+=back
+
+=head1 Cv::Seq
+
+OpenCV のシーケンスは、点、矩形、円など様々なデータを格納します。格納さ
+れたデータを型なしで扱うスーパクラス L<Cv::Seq|Cv::Seq-ja> と、データに
+合わせた変換を行う派生クラス L<Cv::Seq::Point|Cv::Seq::Point-ja>,
+L<Cv::Seq::Rect|Cv::Seq::Rect-ja>, ... に分け、データに合わせて bless
+して使います。C言語のキャストのようなものです。
+
+facedetect の一部を示します。HaarDetectObjects() は、検出した顔を複数の
+CvRect 型のデータのリストにして返します。次の例は、シーケンスを
+C<Cv::Seq::Rect> で bless して、顔を 1つずつ取り出します。
+
+  my $faces = bless $image->HaarDetectObjects(
+    $cascade, $storage, 1.1, 2, CV_HAAR_SCALE_IMAGE,
+    cvSize(30, 30)), "Cv::Seq::Rect";
+  while (my @rect = $faces->shift) {
+    my ($x, $y, $w, $h) = @rect;
+    ...
+  }
+
+同じ部分の C言語のコードを並べておきます。比べやすくするために、余分な
+ものは省きました。
+
+  CvSeq* faces = cvHaarDetectObjects(
+    image, cascade, storage, 1.1, 2, CV_HAAR_SCALE_IMAGE,
+    cvSize(30, 30));
+  for (;;) {
+    CvRect rect;
+    cvSeqPopFront(faces, &rect);
+    ...
+  }
+
+=head2 メソッド
+
+=over
+
+=item Cv->CreateSeq()
+
+=item CreateSeq($seqFlags, $headerSize, $elemSize, $stor)
+
+=item Cv::Seq->MakeSeqHeaderForArray($seqFlags, $headerSize, $elemSize, $stor)
+
+=item Cv::Seq->new($seqFlags, $headerSize, $elemSize, $stor)
+
+=item $seq->Push(@elem)
+
+=item $seq->Pop()
+
+=item $seq->Unshift(@elem)
+
+=item $seq->Shift()
+
+=item $seq->Splice()
+
+	# splice($array, $offset, $length, @list)
+	# splice($array, $offset, $length)
+	# splice($array, $offset)
+
+=back
+
+=head2 メモリの解放
+
+動的なメモリは、主にシーケンスを置く領域として使います。Cv の中はそれが
+必要な呼出しにおいて与えられないとき、内部で確保することがあります。確
+保した領域は $Cv::STORAGE に置きますが、動的なメモリは、使い方によって
+は、その成長を制限する必要があります。OpenCV は cvClearMemStorage() を
+呼んでリセットできるようにしていますが、Perl では、次のとおり local を
+使うと簡単です。
+
+ {
+   local $Cv::STORAGE = $Cv::STORAGE;
+   my $seq = Cv::Seq::Point->new();
+   ...
+ }
+
+
+=head1 Cv::Pango
+
+C<Cv::Pango> は、Pango を使用して、いろいろな文字を描きます。
+Cv::Arr::PutText() そのものを置き換えます。
+
+ use Cv;
+ use Cv::Pango;
+
+ my $img = Cv::Mat->new([240, 320], CV_8UC4);
+ $img->putText(
+	"\x{03A0}\x{03B1}\x{03BD}\x{8A9E}", # "Παν語",
+	[20, 200], 'Sans Serif 42',
+	);
+ $img->showImage;
+ $img->waitKey;
+
+=head2 メソッド
+
+=over 4
+
+=item $img->putText($text, $org, $font, $color)
+
+$img は Cv::Arr のオブジェクトです。$font は Pango::FontDescription の
+オブジェクトかフォントを識別するための文字列を指定します。InitFont() で
+作成したフォントも使えます。PutText のその他のパラメータの詳細は
+OpenCV の cvPutText() を参照してください。
+
+フォントを識別するための文字列は次のとおり。
+
+ "[FAMILY-LIST] [STYLE-OPTIONS] [SIZE]"
+
+具体的には、
+
+ "sans bold 12"
+ "serif,monospace bold italic condensed 16"
+ "normal 10"
+
+詳細は pango.FontDescription() を参照してください。
+
+=item $font->getTextSize($text, my $size, my $baseline)
+
+文字列のサイズとベースラインを求めます。サイズは幅と高さです。このサブ
+ルーチンは Pango::FontDescription に配置されます。行儀が悪いと思うので
+すが、どうすればいいのか分っていません。
+
+=back
+
+=head2 エクスポート
+
+ありません。
+
+=head2 バグ
+
+=over
+
+=item *
+
+いまのところ、CV_8UC1 と CV_8UC4 しか使えません。
+
+=item *
+
+このパッケージは、フォントが Pango::FontDescription のオブジェクトにな
+るので、この名前空間に cvGetTextSize() を置きます。もっと上手なパッチの
+あて方をご存知の方は教えてください。
+
+=back
+
+
+
+
+
+=head1 Cv::Flipbook
+
+C<Cv::Flipbook> は、画像ファイルをひとつのディレクトリにまとめ、それを
+順番に読み込んでビデオ入力の代わりとして扱います。つまり、パラパラ漫画
+をビデオとして扱うということです。
+
+ use Cv;
+ use Cv::Flipbook;
+ 
+ my $capture = Cv->CaptureFromFlipbook("/path/to/flipbook");
+ while (my $frame = $capture->QueryFrame) {
+   $frame->Flip(\0, 1)->ShowImage;
+   my $c = Cv->WaitKey(100);
+   last if $c >= 0;
+ }
+
+次の注意する必要があります。
+
+=over
+
+=item 
+
+すべての画像の大きさを揃える。
+
+=item
+
+ファイル名に順序付けのための番号を含める。
+
+=back
+
+=head2 メソッド
+
+=over
+
+=item Cv::Flipbook->new($dir, $flags, $pattern)
+
+パラパラ画像をビデオ入力にするオブジェクトを返します。new の代りに
+C<Cv-E<gt>CaptureFromFlipbook> と C<Cv::Capture-E<gt>FromFlipbook> も使
+えます。
+
+=over
+
+=item $dir
+
+パラパラ漫画の画像ファイルをまとめたディレクトリです。省略時は、
+カレントディレクトリを対象として扱います。
+
+=item $flags
+
+画像ファイルの読み込みで LoadImage のフラグとして使います。省略時は、
+CV_LOAD_IMAGE_COLOR を使いれます。
+
+=item $pattern
+
+$dir と合わせて画像ファイルの一覧を得るためのパターンとして使います。ス
+カラかリストを指定します。省略したときには、いくつかの画像ファイルの拡
+張子が指定されたものとみなします。
+
+ glob("$dir/$pattern")               # scalar
+ map { glob("$dir/$_") } @$pattern   # list
+
+=back
+
+=item GrabFrame()
+
+次フレームの画像ファイルを準備します。次のフレーム番号は、
+CV_CAP_PROP_POS_FRAMES で得られるプロパティです。
+
+=item NextFrame()
+
+フレーム番号を 1つ進めます。
+
+=item RetrieveFrame()
+
+フレームを読み込んで返します。フレーム番号は 1つ進みます。次のプロパティ
+を更新します。
+
+ CV_CAP_PROP_FRAME_WIDTH
+ CV_CAP_PROP_FRAME_HEIGHT
+ CV_CAP_PROP_POS_MSEC      # CV_CAP_PROP_FPS が定義済なら
+
+3つ目の CV_CAP_PROP_POS_MSEC は、秒あたりのフレーム数 CV_CAP_PROP_FPS
+が C<SetCaptureProperty> で与えられていれば更新します。最後のフレームを
+越えると undef を返します。
+
+=item QueryFrame()
+
+次のフレームを読み込み、それを返します。
+
+=item GetCaptureProperty($property_id)
+
+パラパラビデオ入力のプロパティ $property_id を取得します。
+取り扱えるプロパティは次のとおり。
+
+ CV_CAP_PROP_FPS
+ CV_CAP_PROP_POS_MSEC
+ CV_CAP_PROP_POS_FRAMES
+ CV_CAP_PROP_FPS
+ CV_CAP_PROP_FRAME_WIDTH
+ CV_CAP_PROP_FRAME_HEIGHT
+
+詳細は OpenCV のリファレンスを参照してください。
+
+=item SetCaptureProperty($property_id, $value)
+
+パラパラビデオ入力のプロパティ $property_id に $value を与えます。
+
+=back
+
+=head2 エクスポート
+
+ありません。
+
+
+=head1 SEE ALSO
+
+=over
+
+=item L<Cv>
+
+=item L<http://opencv.willowgarage.com/>
+
+=item L<http://github.com/obuk/Cv-Olive>
+
+=back
+
+=head1 LICENCE
+
+Yuta MASUDA E<lt>yuta.masuda@newdaysys.co.jpE<gt>
+
+Copyright (c) 2012 by Yuta MASUDA.
+
+All rights reserved. This program is free software; you can
+redistribute it and/or modify it under the same terms as Perl itself.
+
+=cut

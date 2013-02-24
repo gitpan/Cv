@@ -3,13 +3,13 @@
 use strict;
 use Test::More;
 BEGIN {
-	plan skip_all => "Inline is required"
+	plan skip_all => "Inline::C required"
 		unless eval "use Inline; 1";
 	plan tests => 5;
 }
 
 BEGIN {
-	use_ok('Cv', -more);
+	use_ok('Cv', -nomore);
 }
 use File::Basename;
 my $lena = dirname($0) . "/lena.jpg";

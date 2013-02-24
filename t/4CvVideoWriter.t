@@ -2,8 +2,9 @@
 
 use strict;
 use warnings;
-# use Test::More qw(no_plan);
-use Test::More tests => 4;
+use Test::More qw(no_plan);
+# use Test::More tests => 5;
+BEGIN { use_ok('Cv::Test') }
 BEGIN { use_ok('Cv') }
 
 SKIP: {

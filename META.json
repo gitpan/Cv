@@ -6,7 +6,7 @@
    "dynamic_config" : 1,
    "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112150",
    "license" : [
-      "unknown"
+      "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -33,10 +33,11 @@
       "runtime" : {
          "requires" : {
             "ExtUtils::MM_Cygwin" : "6.62",
-            "ExtUtils::ParseXS" : "3.07"
+            "ExtUtils::ParseXS" : "2.22",
+            "Getopt::Long" : "2.38"
          }
       }
    },
    "release_status" : "stable",
-   "version" : "0.22"
+   "version" : "0.24"
 }

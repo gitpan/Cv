@@ -36,10 +36,10 @@ use 5.008008;
 use strict;
 use warnings;
 use Carp;
-use Scalar::Util qw(blessed);
+use Scalar::Util;
 use warnings::register;
 
-our $VERSION = '0.22';
+our $VERSION = '0.24';
 
 use Cv::Constant qw(:all);
 
@@ -49,44 +49,60 @@ XSLoader::load('Cv', $VERSION);
 require Exporter;
 our @ISA = qw(Exporter);
 
-our @EXPORT_MISC = grep { Cv->can($_) } ( qw( cvCbrt cvCeil
-	cvFastArctan cvFloor cvMSERParams cvPoint cvPoint2D32f
-	cvPointTo32f cvPoint3D32f cvPoint2D64f cvPointTo64f cvPoint3D64f
-	cvRealScalar cvRect cvRound cvSURFParams cvScalar cvScalarAll
-	cvSize cvSize2D32f cvSlice cvSqrt cvTermCriteria cvVersion ) );
+our @EXPORT_OK = grep /^(IPL|CV|cv)/, (keys %Cv::);
 
 our %EXPORT_TAGS = (
-	'all' => [ (grep /^(IPL|CV|cv)/, keys %Cv::) ],
-	'std' => [ (grep /^(IPL|CV)/, keys %Cv::), @EXPORT_MISC ],
+	'all' => \@EXPORT_OK,
+	'std' => \@EXPORT_OK,
 	);
-
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = ( );
 
+our %IMPORT;
 our %O;
 our %M;
 
+BEGIN {
+	$IMPORT{$_} = 1 for qw(seq more);
+	$IMPORT{$_} = 0 for qw(qt);
+	$O{$_} = 1 for qw(boxhappy);
+}
+
+use Getopt::Long;
+
 sub import {
 	my $self = shift;
-	my @std = ();
-	my %auto = (
-		more => 'Cv::More',
-		seq => 'Cv::Seq',
+	local @ARGV = @_;
+	my $opt_ok = GetOptions(
+		"more!"     => \$IMPORT{more},
+		"seq!"      => \$IMPORT{seq},
+		"qt!"       => \$IMPORT{qt},
+		"boxhappy!" => \$O{boxhappy},
 		);
-	for (@_) {
-		if (/^(:no|-)(\w+)$/) {
-			delete $auto{lc $2};
-		} else {
-			push(@std, $_);
+	unless ($opt_ok) {
+		die << "----";
+Usage: use Cv qw(-nomore -noseq -qt)
+----
+;
+	}
+	if (@ARGV) {
+		my @argv = ();
+		for (@ARGV) {
+			if (/^:no(\w+)$/) {
+				$IMPORT{lc $1} = 0;
+			} else {
+				push(@argv, $_);
+			}
 		}
+		@ARGV = @argv;
 	}
-	for (grep { defined $auto{$_} } keys %auto) {
-		eval "use $auto{$_}";
-		die "can't use $auto{$_}; $@" if $@;
+	for (grep { $IMPORT{$_} } keys %IMPORT) {
+		s/./\U$&/;
+		eval "use Cv::$_";
+		die "can't use Cv::$_; $@" if $@;
 	}
-	push(@std, ":std") unless @std;
-	$self->export_to_level(1, $self, @std);
+	push(@ARGV, ":std") unless @ARGV;
+	$self->export_to_level(1, $self, @ARGV);
 }
 
 
@@ -132,27 +148,30 @@ You can omit parameters and that will be inherited.
 
 =cut
 
+sub new_args (\@) {
+	my $x = shift;
+	my $self = shift(@$x);
+	my $sizes = @$x && ref $x->[0] eq 'ARRAY' ? shift(@$x) :
+		ref $self ? $self->sizes : undef;
+	Carp::croak 'size not specified in ', (caller 1)[3] unless defined $sizes;
+	my $type  = @$x ? shift(@$x) : ref $self ? $self->type : undef;
+	Carp::croak 'type not specified in ', (caller 1)[3] unless defined $type;
+	($self, $sizes, $type);
+}
+
+
 sub Cv::Image::new {
-	my $self = shift;
-	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : ref $self? $self->sizes :
-		Carp::croak 'Cv::Image::new: ?sizes';
-	my $type = @_? shift : ref $self? $self->type :
-		Carp::croak 'Cv::Image::new: ?type';
+	my ($self, $sizes, $type) = new_args(@_);
 	my ($channels, $depth) = (&Cv::CV_MAT_CN($type), &Cv::CV2IPL_DEPTH($type));
-	# Carp::croak "usage: Cv::Image::new(sizes, type)" unless $depth;
 	my ($rows, $cols) = @$sizes;
 	my $image = Cv::cvCreateImage([$cols, $rows], $depth, $channels);
-	$image->origin($self->origin) if ref $self;
+	$image->origin($self->origin) if ref $self && $self->can('origin');
 	$image;
 }
 
 
 sub Cv::Mat::new {
-	my $self = shift;
-	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : ref $self? $self->sizes :
-		Carp::croak 'Cv::Mat::new: ?sizes';
-	my $type = @_? shift : ref $self? $self->type :
-		Carp::croak 'Cv::Mat::new: ?type';
+	my ($self, $sizes, $type) = new_args(@_);
 	if (@_) {
 		eval "use Cv::More";
 		die $@ if $@;
@@ -166,11 +185,7 @@ sub Cv::Mat::new {
 
 
 sub Cv::MatND::new {
-	my $self = shift;
-	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : ref $self? $self->sizes :
-		Carp::croak 'Cv::MatND::new: ?sizes';
-	my $type = @_? shift : ref $self? $self->type :
-		Carp::croak 'Cv::MatND::new: ?type';
+	my ($self, $sizes, $type) = new_args(@_);
 	if (@_) {
 		eval "use Cv::More";
 		die $@ if $@;
@@ -183,11 +198,7 @@ sub Cv::MatND::new {
 
 
 sub Cv::SparseMat::new {
-	my $self = shift;
-	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : ref $self? $self->sizes :
-		Carp::croak 'Cv::SparseMat::new: ?sizes';
-	my $type = @_? shift : ref $self? $self->type :
-		Carp::croak 'Cv::SparseMat::new: ?type';
+	my ($self, $sizes, $type) = new_args(@_);
 	unshift(@_, $sizes, $type);
 	goto &Cv::cvCreateSparseMat;
 }
@@ -233,26 +244,41 @@ C<cvCreateMat()> as:
 
 package Cv;
 
-foreach (classes('Cv')) {
-	next if /^Cv::.*::Ghost$/;
-	next if /^Cv::Constant$/;
+for (
+	"Cv",
+	"Cv::Arr",
+	"Cv::BGCodeBookModel",
+	"Cv::Capture",
+	"Cv::Chain",
+	"Cv::ChainPtReader",
+	"Cv::ConDensation",
+	"Cv::ContourScanner",
+	"Cv::ContourTree",
+	"Cv::ConvKernel",
+	"Cv::FileNode",
+	"Cv::FileStorage",
+	"Cv::Font",
+	"Cv::HaarClassifierCascade",
+	"Cv::Histogram",
+	"Cv::HuMoments",
+	"Cv::Image",
+	"Cv::Kalman",
+	"Cv::Mat",
+	"Cv::MatND",
+	"Cv::MemStorage",
+	"Cv::Moments",
+	"Cv::RNG",
+	"Cv::SparseMat",
+	"Cv::StereoBMState",
+	"Cv::StereoGCState",
+	"Cv::StereoSGBM",
+	"Cv::String",
+	"Cv::StringHashNode",
+	"Cv::Subdiv2D",
+	"Cv::TypeInfo",
+	"Cv::VideoWriter",
+	) {
 	{ no strict 'refs'; *{$_ . '::AUTOLOAD'} = \&Cv::autoload }
-}
-
-
-sub classes {
-	my @list = ();
-	my $name = shift;
-	my $class = eval "\\%${name}::";
-	if (ref $class eq 'HASH') {
-		for (keys %$class) {
-			if (/^(\w+)::$/) {
-				push(@list, &classes("${name}::$1"));
-			}
-		}
-		push(@list, $name);
-	}
-	@list;
 }
 
 
@@ -302,6 +328,12 @@ sub assoc {
 }
 
 
+sub Usage {
+	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
+	Carp::croak "Usage: ${[ caller 1 ]}[3](", join('', @_), ")";
+}
+
+
 =item *
 
 When you omit the destination image or matrix (often named "dst"),
@@ -327,7 +359,7 @@ C<NULL> for the destination.
 package Cv;
 
 sub is_null { ref $_[0] eq 'SCALAR' && ${$_[0]} == 0 }
-sub is_cvarr { blessed $_[0] && $_[0]->isa('Cv::Arr') }
+sub is_cvarr { Scalar::Util::blessed $_[0] && $_[0]->isa('Cv::Arr') }
 
 
 # ============================================================
@@ -564,38 +596,33 @@ sub Split {
 			push(@_, $dst);
 		}
 	}
+	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
 	cvSplit($src, @_);
-	wantarray ? @_ : \@_;	# XXXXX
+	wantarray ? @_ : \@_;
 }
 
-
-sub Cv::Merge {
-	ref (my $class = shift) and Carp::croak 'class name needed';
-	if (ref $_[0] eq 'ARRAY') {
-		Cv::Arr::Merge(@_);
-	} elsif (Cv::is_cvarr($_[0])) {
-		if (@_ <= 4) {
-			Cv::Arr::Merge(\@_);
-		} else {
-			my $dst = pop(@_);
-			Cv::Arr::Merge(\@_, $dst);
-		}
-	} else {
-		Carp::croak "usage: Merge([src0, src1, ...], dst)"
-	}
-}
-
-
+{*Cv::Merge = \&Merge }
 sub Merge {
-	# Merge([src1, src2, ...], [dst]);
-	my $srcs = shift;
-	my $dst = shift;
-	unless ($dst) {
-		my $src0 = $srcs->[0];
-		$dst = $src0->new(&Cv::CV_MAKETYPE($src0->type, scalar @$srcs));
+	my $src = shift;
+	$src = shift unless ref $src; # ignore class
+	my @src;
+	if (ref $src eq 'ARRAY') {
+		@src = @$src;
+	} elsif (Cv::is_cvarr($src)) {
+		@src = ($src);
+		while (@src < 4) {
+			last unless @_ &&
+				(Cv::is_cvarr($_[0]) && $_[0]->channels == 1 ||
+				 Cv::is_null($_[0]));
+			push(@src, shift);
+		}
 	}
-	unshift(@_, $srcs, $dst);
-	goto &Cv::cvMerge;
+	Cv::Usage("[src0, src1, ...], dst") unless @src;
+	my $dst = shift;
+	$dst ||= $src[0]->new(&Cv::CV_MAKETYPE($src[0]->type, scalar @src));
+	push(@src, (\0) x (4 - @src));
+	unshift(@_, @src, $dst);
+	goto &cvMerge;
 }
 
 
@@ -657,7 +684,7 @@ sub MinMaxLoc {
 	# MinMaxLoc($arr, my $minVal, my $maxVal, my $minLoc, my $maxLoc, my $mask)
 	if (@_ >= 3) {
 		$_[3] = my $minLoc unless defined $_[3];
-		$_[4] = my $maxLoc unless defined $_[3];
+		$_[4] = my $maxLoc unless defined $_[4];
 	}
 	goto &cvMinMaxLoc;
 }
@@ -730,9 +757,9 @@ sub Cmp {
 	# Cmp(src, src2, [dst], cmpOp)
 	# CmpS(src, value, [dst], cmpOp)
 	my ($src, $src2_value) = splice(@_, 0, 2);
-	my $dst = dst(@_) || $src->new(&Cv::CV_8UC(&Cv::CV_MAT_CN($src->type)));
+	my $dst = dst(@_) || $src->new(&Cv::CV_8UC1);
 	unshift(@_, $src, $src2_value, $dst);
-	if (ref $src2_value eq 'ARRAY') {
+	if (!ref $src2_value) {
 		goto &cvCmpS;
 	} else {
 		goto &cvCmp;
@@ -746,7 +773,7 @@ sub InRange {
 	# InRangeS($src, $upper, $lower, [$dst]);
 	my $src = shift;
 	my ($upper, $lower) = splice(@_, 0, 2);
-	my $dst = dst(@_) || $src->new;
+	my $dst = dst(@_) || $src->new(&Cv::CV_8UC1);
 	unshift(@_, $src, $upper, $lower, $dst);
 	if (ref $upper eq 'ARRAY') {
 		goto &cvInRangeS;
@@ -762,7 +789,7 @@ sub Max {
 	my ($src, $src2_value) = splice(@_, 0, 2);
 	my $dst = dst(@_) || $src->new;
 	unshift(@_, $src, $src2_value, $dst);
-	if (ref $src2_value eq 'ARRAY') {
+	if (!ref $src2_value) {
 		goto &cvMaxS;
 	} else {
 		goto &cvMax;
@@ -776,7 +803,7 @@ sub Min {
 	my ($src, $src2_value) = splice(@_, 0, 2);
 	my $dst = dst(@_) || $src->new;
 	unshift(@_, $src, $src2_value, $dst);
-	if (ref $src2_value eq 'ARRAY') {
+	if (!ref $src2_value) {
 		goto &cvMinS;
 	} else {
 		goto &cvMin;
@@ -845,7 +872,7 @@ sub ConvertScale {
 sub ConvertScaleAbs {
 	# ConvertScaleAbs(src, [dst], [scale], [shift])
 	my $src = shift;
-	my $dst = dst(@_) || $src->new;
+	my $dst = dst(@_) || $src->new(&Cv::CV_8UC($src->channels));
 	unshift(@_, $src, $dst);
 	goto &cvConvertScaleAbs;
 }
@@ -969,8 +996,9 @@ sub LUT {
 		my @lut = $lut->split;
 		$dst ||= $src->new($lut->type);
 		my @dsts = $dst->split;
+		local $Carp::CarpLevel = $Carp::CarpLevel + 1;
 		cvLUT($src, $dsts[$_], $lut[$_]) for 0 .. $#lut;
-		Cv->Merge(\@dsts, $dst); # XXXXX
+		Cv->Merge(\@dsts, $dst);
 	} else {
 		$dst ||= $src->new(&Cv::CV_MAKETYPE($lut->type, 1));
 		unshift(@_, $src, $dst, $lut);
@@ -1091,7 +1119,22 @@ sub Transpose {
 
 package Cv;
 
-sub is_cvmem { blessed $_[0] && $_[0]->isa('Cv::MemStorage') }
+sub is_cvmem { Scalar::Util::blessed $_[0] && $_[0]->isa('Cv::MemStorage') }
+
+our $STORAGE;
+
+sub STORAGE {
+	$STORAGE ||= &cvCreateMemStorage(0);
+}
+
+sub stor (\@) {
+	my $storage;
+	for (my $i = 0; $i < @{$_[0]}; $i++) {
+		($storage) = splice(@{$_[0]}, $i, 1), last
+			if Cv::is_cvmem(${$_[0]}[$i]);
+	}
+	$storage ||= &STORAGE;
+}
 
 package Cv::MemStorage;
 { *new = \&Cv::CreateMemStorage }
@@ -1108,6 +1151,33 @@ sub CV_RGB { my ($r, $g, $b, $a) = @_; cvScalar($b, $g, $r, $a || 0) }
 package Cv::Font;
 { *new = \&Cv::InitFont }
 
+package Cv::Arr;
+
+sub Ellipse {
+	# cvEllipse(img, center, axes, angle, start_angle, end_angle,
+	# 		  color, thickness=1, int lineType=8, int shift=0)
+	my ($img, $center, $axes, $angle, $start_angle, $end_angle) =
+		splice(@_, 0, 6);
+	if ($O{boxhappy}) {
+		if (&Cv::cvVersion() < 2.002) {
+			$_ = -$_ for $angle, $start_angle, $end_angle;
+		}
+	}
+	unshift(@_, $img, $center, $axes, $angle, $start_angle, $end_angle);
+	goto &cvEllipse;
+}
+
+sub EllipseBox {
+	# void cvEllipseBox(img, box, color, thickness=1, lineType=8, shift=0)
+	my ($img, $box) = splice(@_, 0, 2);
+	if ($O{boxhappy}) {
+		if (&Cv::cvVersion() < 2.002) {
+			$box = [ $box->[0], $box->[1], 90 - $box->[2] ];
+		}
+	}
+	unshift(@_, $img, $box);
+	goto &cvEllipseBox;
+}
 
 # ============================================================
 #  core. The Core Functionality: XML/YAML Persistence
@@ -1115,32 +1185,24 @@ package Cv::Font;
 
 package Cv;
 
-our %TYPENAME2CLASS;
-
-for ([ qw(CV_TYPE_NAME_GRAPH Cv::Graph) ],
-	 [ qw(CV_TYPE_NAME_HAAR Cv::HaarClassifierCascade) ],
-	 [ qw(CV_TYPE_NAME_IMAGE Cv::Image) ],
-	 [ qw(CV_TYPE_NAME_MAT Cv::Mat) ],
-	 [ qw(CV_TYPE_NAME_MATND Cv::MatND) ],
-	 [ qw(CV_TYPE_NAME_SEQ Cv::Seq) ],
-	 [ qw(CV_TYPE_NAME_SEQ_TREE Cv::Seq) ],
-	 [ qw(CV_TYPE_NAME_SPARSE_MAT Cv::SparseMat) ]) {
-	next unless my $t = eval $_->[0];
-	$TYPENAME2CLASS{$t} = $_->[1];
-}
-
+our %CLASS = (
+	&Cv::CV_TYPE_NAME_GRAPH      => 'Cv::Graph',
+	&Cv::CV_TYPE_NAME_HAAR       => 'Cv::HaarClassifierCascade',
+	&Cv::CV_TYPE_NAME_IMAGE      => 'Cv::Image',
+	&Cv::CV_TYPE_NAME_MAT        => 'Cv::Mat',
+	&Cv::CV_TYPE_NAME_MATND      => 'Cv::MatND',
+	&Cv::CV_TYPE_NAME_SEQ        => 'Cv::Seq',
+	&Cv::CV_TYPE_NAME_SEQ_TREE   => 'Cv::Seq',
+	&Cv::CV_TYPE_NAME_SPARSE_MAT => 'Cv::SparseMat',
+	);
 
 package Cv::FileStorage;
 { *new = \&Cv::OpenFileStorage }
 
 sub fsbless {
-	my $ptr = shift;
-	if ($ptr) {
-		if (my $info = Cv::cvTypeOf($ptr)) {
-			if (my $class = $Cv::TYPENAME2CLASS{$info->type_name}) {
-				bless $ptr, $class;
-			}
-		}
+	my ($ptr) = @_;
+	if (my $class = $Cv::CLASS{Cv::cvTypeOf($ptr)->type_name}) {
+		bless $ptr, $class;
 	}
 	$ptr;
 }
@@ -1154,12 +1216,18 @@ sub Cv::Load {
 
 sub Load {
 	ref (my $class = shift) and Carp::croak 'class name needed';
-	fsbless Cv::cvLoad(@_);
+	my $ref = fsbless Cv::cvLoad(@_);
+	Carp::croak "type_name unknown in ", (caller 0)[3]
+		unless Scalar::Util::blessed $ref;
+	$ref;
 }
 
 
 sub Read {
-	fsbless cvRead(@_);
+	my $ref = fsbless cvRead(@_);
+	Carp::croak "type_name unknown in ", (caller 0)[3]
+		unless Scalar::Util::blessed $ref;
+	$ref;
 }
 
 
@@ -1198,18 +1266,18 @@ protected as eval { ... }. (Cv-0.13)
 
 our %ERROR = (
 	handler => undef,
-    handler_sample => sub {
+	handler_sample => sub {
 		my ($status, $func_name, $err_msg, $file_name, $line) = @_;
 		Carp::croak("$func_name: @{[ cvErrorStr($status) ]} ($err_msg)");
-    },
-    mode => 0,
+	},
+	mode => 0,
 	status => undef,
-    userdata => undef,
-    );
+	userdata => undef,
+	);
 
 our $ERROR = sub {
 	my ($status, $func_name, $err_msg, $file_name, $line) = @_;
-	$ERROR{status} = $status;
+	cvSetErrStatus($status);
 	$func_name ||= 'unknown function';
 	my $mode = $ERROR{mode};
 	if ($mode == 0 || $mode == 1) {
@@ -1353,7 +1421,7 @@ sub Filter2D {
 sub Laplace {
 	# Laplace(src, dst, [apertureSize])
 	my $src = shift;
-	my $dst = dst(@_) || $src->new(&Cv::CV_16SC(&Cv::CV_MAT_CN($src->type)));
+	my $dst = dst(@_) || $src->new(&Cv::CV_16SC($src->channels));
 	unshift(@_, $src, $dst);
 	goto &cvLaplace;
 }
@@ -1427,15 +1495,15 @@ package Cv;
 sub GetRotationMatrix2D {
 	# Cv->GetRotationMatrix2D($center, $angle, $scale, my $mapMatrix)
 	my $class = shift;
-	$_[3] ||= Cv::Mat->new([2, 3], &Cv::CV_32FC1);
-	goto &cv2DRotationMatrix;
+	$_[3] ||= Cv::Mat->new([2, 3], &Cv::CV_32FC1) if @_ >= 3;
+	goto &cvGetRotationMatrix2D;
 }
 
 
 sub GetAffineTransform {
 	# Cv->GetAffineTransform($src, $dst, my $mapMatrix)
 	my $class = shift;
-	$_[2] ||= Cv::Mat->new([2, 3], &Cv::CV_32FC1);
+	$_[2] ||= Cv::Mat->new([2, 3], &Cv::CV_32FC1) if @_ >= 2;
 	goto &cvGetAffineTransform;
 }
 
@@ -1443,7 +1511,7 @@ sub GetAffineTransform {
 sub GetPerspectiveTransform {
 	# Cv->GetPerspectiveTransform($src, $dst, my $mapMatrix)
 	my $class = shift;
-	$_[2] ||= Cv::Mat->new([3, 3], &Cv::CV_32FC1);
+	$_[2] ||= Cv::Mat->new([3, 3], &Cv::CV_32FC1) if @_ >= 2;
 	goto &cvGetPerspectiveTransform;
 }
 
@@ -1538,18 +1606,17 @@ sub CvtColor {
 	my $src = shift;
 	my $dst = dst(@_);
 	my $code = shift;
+	Cv::Usage("src, dst, code") unless defined $code;
 	unless ($dst) {
-		if (!defined $code) {
-			Carp::croak "Usage: Cv->CvtColor(src, dst, code)";
-		} elsif ($code == &Cv::CV_BGR2RGB   || $code == &Cv::CV_RGB2BGR) {
+		if ($code == &Cv::CV_BGR2RGB   || $code == &Cv::CV_RGB2BGR) {
 			$dst = $src->new;
 		} elsif ($code == &Cv::CV_BGR2GRAY  || $code == &Cv::CV_RGB2GRAY) {
-			$dst = $src->new($src->sizes, &Cv::CV_MAKETYPE($src->type, 1));
+			$dst = $src->new(&Cv::CV_MAKETYPE($src->type, 1));
 		} elsif ($code == &Cv::CV_GRAY2BGR  || $code == &Cv::CV_GRAY2RGB  ||
 				 $code == &Cv::CV_BGR2HSV   || $code == &Cv::CV_RGB2HSV   ||
 				 $code == &Cv::CV_BGR2YCrCb || $code == &Cv::CV_RGB2YCrCb ||
 				 $code == &Cv::CV_YCrCb2BGR || $code == &Cv::CV_YCrCb2RGB) {
-			$dst = $src->new($src->sizes, &Cv::CV_MAKETYPE($src->type, 3));
+			$dst = $src->new(&Cv::CV_MAKETYPE($src->type, 3));
 		}
 	}
 	unshift(@_, $src, $dst, $code);
@@ -1627,7 +1694,14 @@ package Cv;
 
 sub BoxPoints {
 	ref (my $class = shift) and Carp::croak 'class name needed';
-	cvBoxPoints($_[0], my $pts);
+	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
+	my $box = $_[0];
+	if ($O{boxhappy}) {
+		if (&Cv::cvVersion() < 2.002) {
+			$box = [ $box->[0], $box->[1], 90 - $box->[2] ];
+		}
+	}
+	cvBoxPoints($box, my $pts);
 	$_[1] = [] unless defined $_[1];
 	@{ $_[1] } = @$pts if @_ >= 2;
 	wantarray? @$pts : $pts;
@@ -1703,9 +1777,10 @@ sub MatchTemplate {
 	# MatchTemplate(image, templ, result, method)
 	my $image = shift;
 	my $templ = shift;
-	my $result = dst(@_) || $templ->new(
+	my $result = dst(@_) || $templ && $templ->new(
 		[ $image->rows - $templ->rows + 1,
-		  $image->cols - $templ->cols + 1 ], &Cv::CV_32FC1);
+		  $image->cols - $templ->cols + 1 ],
+		&Cv::CV_32FC1);
 	unshift(@_, $image, $templ, $result);
 	goto &cvMatchTemplate;
 }
@@ -1746,8 +1821,30 @@ package Cv;
 our %MOUSE = ( );
 our %TRACKBAR = ( );
 
+sub InitSystem {
+	ref (my $class = shift) and Carp::croak 'class name needed';
+	goto &cvInitSystem if cvHasQt();
+	return undef;
+}
+
 package Cv::Arr;
+
 { *Show = \&ShowImage }
+sub ShowImage {
+	Cv::Usage("image, name, flags=CV_WINDOW_AUTOSIZE")
+		unless @_ >= 1 && @_ <= 3;
+	my $image = shift;
+	my $name = shift;
+	$name = 'Cv' unless defined $name;
+	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
+	unless (Cv::cvGetWindowHandle($name)) {
+		my @name_flags = ($name, splice(@_));
+		Cv::cvNamedWindow(@name_flags);
+	}
+	Cv::cvShowImage($name, $image);
+	$image;
+}
+
 
 # ============================================================
 #  highgui. High-level GUI and Media I/O: Reading and Writing Images and Video
@@ -1767,7 +1864,16 @@ package Cv::Mat;
 { *Load = \&Cv::LoadImageM }
 
 package Cv::Arr;
+
 { *Save = \&SaveImage }
+sub SaveImage {
+	Cv::Usage("image, filename, params=0")
+		unless @_ >= 2 && @_ <= 3;
+	my ($image, $filename) = splice(@_, 0, 2);
+	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
+	my $r = &Cv::cvSaveImage($filename, $image, @_);
+	$r > 0 ? $image : undef;
+}
 
 package Cv::Capture;
 { *FromCAM = \&Cv::CaptureFromCAM }
@@ -1836,17 +1942,23 @@ package Cv::StereoBMState;
 
 package Cv::StereoGCState;
 
-{ *new = \&Cv::CreateStereoGCState }
-{ *FindStereoCorrespondence = *FindCorrespondence = \&FindStereoCorrespondenceGC }
+if (Cv->can('cvCreateStereoGCState')) {
+	*new = \&Cv::CreateStereoGCState;
+	*FindStereoCorrespondence = *FindCorrespondence =
+		\&FindStereoCorrespondenceGC;
+}
 
 package Cv::StereoSGBM;
 
-sub Cv::CreateStereoSGBM {
-	ref (my $class = shift) and Carp::croak 'class name needed';
-	Cv::StereoSGBM->new(@_);
+if (__PACKAGE__->can('new')) {
+	*Cv::CreateStereoSGBM = sub {
+		ref (my $class = shift) and Carp::croak 'class name needed';
+		unshift(@_, __PACKAGE__);
+		goto &{__PACKAGE__ . '::new'};
+	};
+	*FindStereoCorrespondence = *FindCorrespondence =
+		\&FindStereoCorrespondenceSGBM;
 }
-
-{ *FindStereoCorrespondence = *FindCorrespondence = \&FindStereoCorrespondenceSGBM }
 
 
 # ============================================================
@@ -1887,7 +1999,64 @@ sub cvHasGUI {
 	}
 }
 
-sub cvHasQt { 0 }
+sub GetBuildInformation {
+	ref (my $class = shift) and Carp::croak 'class name needed';
+	our $BuildInformation;
+	if (Cv->version >= 2.004) {
+		$BuildInformation = cvGetBuildInformation()
+			unless defined $BuildInformation;
+	}
+	$BuildInformation ||= '';
+	our %BuildInformation = ();
+	unless (%BuildInformation) {
+		for ($BuildInformation) {
+			my $g = '';
+			for (split(/\n/)) {
+				s/^\s+//;
+				s/\s+$//;
+				if (s/([^\:]+):\s*//) {
+					my $k = $1;
+					if (/^$/) {
+						$g = $k;
+					} elsif ($g) {
+						$BuildInformation{$g}{$k} = $_;
+					} else {
+						$BuildInformation{$k} = $_;
+					}
+				} else {
+					$g = undef;
+				}
+			}
+		}
+	}
+	wantarray? %BuildInformation : $BuildInformation;
+}
+
+sub HasModule {
+	ref (my $class = shift) and Carp::croak 'class name needed';
+	our %OpenCV_modules;
+	unless (%OpenCV_modules) {
+		my %x = Cv->GetBuildInformation();
+		if (my $m = $x{q(OpenCV modules)}) {
+			$OpenCV_modules{$_}++ for split(/\s+/, $m->{'To be built'});
+			delete $OpenCV_modules{$_} for split(/\s+/, $m->{Disabled});
+			delete $OpenCV_modules{$_} for split(/\s+/, $m->{Unavailable});
+		}
+	}
+	grep { $OpenCV_modules{$_} } @_ ? @_ : keys %OpenCV_modules;
+}
+
+sub cvHasQt {
+	my $hasQt;
+	# if (Cv->can('cvFontQt')) {
+	if (1) {
+		my %x = Cv->GetBuildInformation;
+		while (my ($k, $v) = each %{$x{GUI}}) {
+			$hasQt = $k if ($k =~ /^QT \d\.\w+$/i && $v =~ /^YES\.*/i)
+		}
+	}
+	$hasQt;
+}
 
 1;
 __END__
@@ -2019,6 +2188,12 @@ Usage of the CV_SIZEOF has changed.  Write the name of structure of
 OpenCV that you want to know the size as follows. (Cv-0.13)
 
  CV_SIZEOF('CvContour')
+
+=item *
+
+When you don't like use Cv::More, you can put qw(:nomore) as use
+Cv option, and you could also put -more between 0.20 and 0.23.
+However, it was confusing to us, we have to change -nomore. (0.24)
 
 =back
 

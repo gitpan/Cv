@@ -3,11 +3,9 @@
 use strict;
 use warnings;
 # use Test::More qw(no_plan);
-use Test::More tests => 24;
-use File::Basename;
-use lib dirname($0);
-use MY;
-BEGIN {	use_ok('Cv') }
+use Test::More tests => 25;
+BEGIN { use_ok('Cv::Test') }
+BEGIN { use_ok('Cv') }
 
 for my $type (CV_8UC3, CV_16SC4, CV_32SC2, CV_32FC2, CV_64FC1) {
 	my $cn = CV_MAT_CN($type);

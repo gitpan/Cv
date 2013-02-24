@@ -17,7 +17,9 @@ package Cv;
 
 our %O;
 
-$O{$_} = 0 for qw(cs cs-warn);
+BEGIN {
+	$O{$_} ||= 0 for qw(cs cs-warn);
+}
 
 our %M;
 
@@ -31,7 +33,7 @@ sub import {
 		if (defined $Cv::O{$_}) {
 			$O{$_} = 1;
 		} else {
-			Carp::croak "Cv::More: can't import $_";
+			Carp::croak join(' ', "can't import", $_, 'in', (caller 0)[3]);
 		}
 	}
 }
@@ -42,7 +44,7 @@ sub unimport {
 		if (defined $Cv::O{$_}) {
 			$O{$_} = 0;
 		} else {
-			Carp::croak "Cv::More: can't unimport $_";
+			Carp::croak join(' ', "can't unimport", $_, 'in', (caller 0)[3]);
 		}
 	}
 }
@@ -72,9 +74,7 @@ package Cv::Mat;
 
 sub m_new {
 	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
-	my $self = shift;
-	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : $self->sizes;
-	my $type = @_ ? shift : $self->type;
+	my ($self, $sizes, $type) = Cv::new_args(@_);
 	my $mat;
 	if (@$sizes) {
 		my ($rows, $cols) = @$sizes; $cols ||= 1;
@@ -107,9 +107,7 @@ package Cv::MatND;
 
 sub m_new {
 	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
-	my $self = shift;
-	my $sizes = @_ && ref $_[0] eq 'ARRAY'? shift : $self->sizes;
-	my $type = @_ ? shift : $self->type;
+	my ($self, $sizes, $type) = Cv::new_args(@_);
 	my $mat;
 	if (@$sizes) {
 		if (@_) {
@@ -127,6 +125,40 @@ sub m_new {
 	}
 	$mat;
 }
+
+
+package Cv::Seq::Point;
+
+{
+	no warnings 'redefine';
+	*new = \&s_new;
+}
+
+sub s_new {
+	my $class = shift;
+	my @init = ();
+	while (ref $_[-1] && ref $_[-1] eq 'ARRAY') {
+		CORE::unshift(@init, CORE::pop);
+	}
+	my $self = $class->SUPER::new(@_);
+	if (@init) {
+		my @dims = Cv::m_dims(@init);
+		pop(@dims) if $dims[-1] == &Cv::CV_MAT_CN($self->type);
+		if (@dims > 1 && $dims[0] == 1) {
+			shift(@dims); @init = @{$init[0]};
+		}
+		if (@dims == 1 && $dims[0] > 1) {
+			@init = map { [ $_ ] } @init if &Cv::CV_MAT_CN($self->type) == 1;
+		}
+		if (@dims == 1) {
+			$self->Push(@init);
+		} else {
+			Carp::croak "can't init in ", (caller 0)[3];
+		}
+	}
+	$self;
+}
+
 
 # ============================================================
 #  core. The Core Functionality: Operations on Arrays
@@ -178,9 +210,7 @@ use overload
 	bool => sub { $_[0] },
 	'<=>' => \&overload_cmp,
 	cmp => \&overload_cmp,
-	fallback => undef,
-	# nomethod => \&overload_nomethod
-	;
+	fallback => undef;
 
 sub overload_cmp {
 	my ($l, $r) = @_;
@@ -191,10 +221,6 @@ sub overload_cmp {
 	bless $l, $lc;
 	bless $r, $rc;
 	$cmp;
-}
-
-sub overload_nomethod {
-	Carp::croak "$0: can't overload ", ref $_[0], "::", $_[3]
 }
 
 
@@ -234,7 +260,8 @@ sub ToArray {
 			$end = $self->cols - 1 if $end == Cv::CV_WHOLE_SEQ_END_INDEX;
 			@{$_[0]} = map { $self->get([0, $_]) } $start .. $end;
 		} else {
-			Carp::croak "Cv::Arr::ToArray: can't convert ", join('x', $self->getDims);
+			Carp::croak join(' ', "can't convert", join('x', $self->getDims),
+							 'in', (caller 0)[3]);
 		}
 	}
 	wantarray? @{$_[0]} : $_[0];
@@ -333,7 +360,7 @@ sub FitEllipse2 {
 	# $mat->FitEllipse2;                                                        
 	my $self = shift;
 	unless (ref $self) {
-		Carp::croak "Usage: Cv->FitEllipse2(points)"
+		Carp::croak "Usage: ${[ caller 0 ]}[3](points)"
 			unless @_;
 		$self = Cv::Mat->new([], &Cv::CV_32SC2, @_);
 	}
@@ -352,9 +379,9 @@ sub FitLine {
     my $self = shift;
     unless (ref $self) {
 		my $points = shift;
-		Carp::croak "Usage: Cv->FitLine(points ...)"
+		Carp::croak "Usage: ${[ caller 0 ]}[3](points, distType=CV_DIST_L2, param=0, reps=0.01, aeps=0.01)"
 			unless defined $points;
-		Carp::croak "Cv->FitLine: points is not [ pt1, pt2, ... ]"
+		Carp::croak "points is not [ pt1, pt2, ... ] in ", (caller 0)[3]
 			unless my @dims = Cv::m_dims(@$points);
 		$self = Cv::Mat->new([], &Cv::CV_32FC($dims[-1]), @$points);
     }
@@ -382,7 +409,7 @@ sub FitLine {
 { *Cv::MinAreaRect = *Cv::MinAreaRect2 = \&MinAreaRect2 }
 sub MinAreaRect2 {
     my $self = shift;
-	&Cv::Seq::stor(\@_);		# remove memstorage;
+	&Cv::stor(@_);				# remove memstorage;
     unless (ref $self) {
 		$self = Cv::Mat->new([], &Cv::CV_32SC2, @_);
 	}
@@ -423,84 +450,6 @@ sub MinEnclosingCircle {
 	return $retval;
 }
 
-
-# ============================================================
-#  highgui. High-level GUI and Media I/O: Qt new functions
-# ============================================================
-
-package Cv;
-
-sub GetBuildInformation {
-	ref (my $class = shift) and Carp::croak 'class name needed';
-	our $BuildInformation;
-	if (Cv->version >= 2.004) {
-		$BuildInformation = cvGetBuildInformation()
-			unless defined $BuildInformation;
-	}
-	$BuildInformation ||= '';
-	our %BuildInformation = ();
-	unless (%BuildInformation) {
-		for ($BuildInformation) {
-			my $g = '';
-			for (split(/\n/)) {
-				s/^\s+//;
-				s/\s+$//;
-				if (s/([^\:]+):\s*//) {
-					my $k = $1;
-					if (/^$/) {
-						$g = $k;
-					} elsif ($g) {
-						$BuildInformation{$g}{$k} = $_;
-					} else {
-						$BuildInformation{$k} = $_;
-					}
-				} else {
-					$g = undef;
-				}
-			}
-		}
-	}
-	wantarray? %BuildInformation : $BuildInformation;
-}
-
-sub HasModule {
-	ref (my $class = shift) and Carp::croak 'class name needed';
-	our %OpenCV_modules;
-	unless (%OpenCV_modules) {
-		my %x = Cv->GetBuildInformation();
-		if (my $m = $x{q(OpenCV modules)}) {
-			$OpenCV_modules{$_}++ for split(/\s+/, $m->{'To be built'});
-			delete $OpenCV_modules{$_} for split(/\s+/, $m->{Disabled});
-			delete $OpenCV_modules{$_} for split(/\s+/, $m->{Unavailable});
-		}
-	}
-	grep { $OpenCV_modules{$_} } @_ ? @_ : keys %OpenCV_modules;
-}
-
-{
-	no warnings 'redefine';
-	sub cvHasQt {
-		my $hasQt;
-		if (Cv->can('cvFontQt')) {
-			my %x = Cv->GetBuildInformation;
-			while (my ($k, $v) = each %{$x{GUI}}) {
-				$hasQt = $k if ($k =~ /^QT \d\.\w+$/i && $v =~ /^YES\.*/i)
-			}
-		}
-		$hasQt;
-	}
-}
-
-unless (Cv->hasQt) {
-	*Cv::cvSetWindowProperty =
-	*Cv::cvGetWindowProperty =
-	*Cv::cvFontQt =
-	*Cv::Arr::cvAddText =
-	*Cv::cvDisplayOverlay =
-	*Cv::cvDisplayStatusBar =
-	*Cv::cvCreateOpenGLCallback = sub { Carp::croak "no Qt" };
-}
-
 1;
 __END__
 # Below is stub documentation for your module. You'd better edit it!
@@ -518,7 +467,7 @@ Cv::More - A little more easy to using L<Cv> in Perl.
 =head1 DESCRIPTION
 
 C<Cv::More> is a package to organize some of the experimental features
-from L<Cv|Cv::Nihongo>. I believe it will be easier to extend the
+from L<Cv>. I believe it will be easier to extend the
 C<Cv>. C<Cv::More> is what separated the part of the C<Cv>. So, it is
 enabled by default. Please make a explicit if you do not use.
 

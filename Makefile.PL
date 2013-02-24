@@ -1,12 +1,11 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
 use 5.008008;
-use ExtUtils::MakeMaker;
+use ExtUtils::MakeMaker 6.31;
 
 use lib qw(./lib);
 use Cv::Config;
 my $cf = new Cv::Config;
-my %with = ( QT => 0, T => 0 );
 
 my @perl_h = qw(perl.h sv.h pp.h);
 my @perl_h_patched = ();
@@ -37,12 +36,12 @@ my @perl_h_patched = ();
 	my $dst = "lib/Cv/Constant.pm";
 	my $tmp = "a.pm";
 	unless (&dumpconst('-v', '-o', $tmp, @{$cf->{include}}) == 0) {
-		my $fallback = 'fallback/Constant.pm-';
-		my $ver = version->parse(join('.', $cf->_version));
+		my $fallback = 'fallback/Constant.pm';
+		my $ver = $cf->_version;
 		my @ver = sort { $b <=> $a } grep { ref $_ && $_ <= $ver } map {
-			/\d+(\.\d+)+/ && version->parse(my $v = $&) } glob("$fallback*");
+			/-([\d\.]+)$/ && version->parse($1) } glob("$fallback-*");
 		die "$0: can't make $dst\n" unless @ver;
-		&cp("$fallback$ver[0]", $tmp);
+		&cp("$fallback-$ver[0]", $tmp);
 	}
 	if (!-f $dst || &cmp('-s', $tmp, $dst) != 0) {
 		&mv($dst, "$dst.bak") if -f $dst;
@@ -53,13 +52,8 @@ my @perl_h_patched = ();
 
 
 my $PREREQ_PM = {
-	#Data::Dumper => 0,
-	#Scalar::Util => 0,
-	#File::Basename => 0,
-	#List::Util => 0,
-	#Time::HiRes => 0,
-	ExtUtils::ParseXS => 3.07,
-	#Cwd => 0,
+	ExtUtils::ParseXS => 2.22,
+	Getopt::Long => 2.38,
 };
 
 if ($^O eq 'cygwin') {
@@ -68,6 +62,9 @@ if ($^O eq 'cygwin') {
 		ExtUtils::MM_Cygwin => 6.62,
 	};
 }
+
+my @dir = qw(Test);
+push(@dir, qw(Qt)) if $cf->hasqt;
 
 WriteMakefile(
 	NAME => 'Cv',
@@ -83,13 +80,21 @@ WriteMakefile(
 	CCFLAGS => $cf->ccflags,
 	DEFINE => join(' ', map { "-DWITH_$_=$with{$_}" } keys %with),
 	dynamic_lib => $cf->dynamic_lib,
+	DIR => [ @dir ],
+	LICENSE => 'perl',
 	clean => {
 		FILES => [
 			@perl_h_patched, 'lib/Cv/Constant.pm*', 'a.pm', '*.tmp',
 			't/ref-*.pm', 'camera.xml', 'contours.xml', 'sample.avi',
-			'_Inline', 'cover_db',
+			'_Inline', 'cover_db', '.lib',
 			] },
 	);
+
+sub MY::test_via_harness {
+    my($self, $perl, $tests) = @_;
+    return qq{\t$perl "-MExtUtils::Command::MM" }.
+           qq{"-e" "test_harness(\$(TEST_VERBOSE), '\$(INST_LIB)', '\$(INST_ARCHLIB)', '.lib/lib', '.lib/arch')" $tests\n};
+}
 
 sub MY::postamble {
 	"
@@ -104,6 +109,8 @@ cover:
 	-HARNESS_PERL_SWITCHES=-MDevel::Cover make test
 	cover
 	find cover_db -type d |xargs chmod +rx
+
+Cv.xs:	Cv.inc
 
 ";
 }

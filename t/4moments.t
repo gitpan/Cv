@@ -1,12 +1,11 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4 -*-
 
 use strict;
-use Test::More qw(no_plan);
-#use Test::More tests => 11;
-
-BEGIN {
-	use_ok('Cv');
-}
+use warnings;
+# use Test::More qw(no_plan);
+use Test::More tests => 2;
+BEGIN { use_ok('Cv::Test') }
+BEGIN { use_ok('Cv') }
 
 my $verbose = Cv->hasGUI;
 
