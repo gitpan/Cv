@@ -3,9 +3,15 @@
 use strict;
 use warnings;
 # use Test::More qw(no_plan);
-use Test::More tests => 11;
+use Test::More;
+BEGIN {
+	eval { use Cv -nomore };
+	eval { require XSLoader; XSLoader::load('Cv::Test', $Cv::VERSION) };
+	plan skip_all => "no Cv/Test.so" if $@;
+	plan tests => 10;
+}
+use Test::Exception;
 BEGIN { use_ok('Cv', -nomore) }
-BEGIN { use_ok('Cv::Test') }
 
 my ($x, $y) = map { (int rand 65536) } 0..1;
 
@@ -20,22 +26,18 @@ if (1) {
 		is_deeply($arr2, $arr);
 	}
 
-	e { Cv::CvPointPtr([]) };
-	err_is("pt is not of type CvPoint in Cv::CvPointPtr");
+	throws_ok { Cv::CvPointPtr([]) } qr/pt is not of type CvPoint in Cv::CvPointPtr at $0/;
 
-	e { Cv::CvPointPtr([1]) };
-	err_is("pt is not of type CvPoint in Cv::CvPointPtr");
+	throws_ok { Cv::CvPointPtr([1]) } qr/pt is not of type CvPoint in Cv::CvPointPtr at $0/;
 
 	{
 		use warnings FATAL => qw(all);
-		e { Cv::CvPointPtr(['1x', '2y']) };
-		err_is("Argument \"1x\" isn't numeric in subroutine entry");
+		throws_ok { Cv::CvPointPtr(['1x', '2y']) } qr/Argument \"1x\" isn't numeric in subroutine entry at $0/;
 	}
 
 	{
 		no warnings 'numeric';
-		my $arr2 = e { Cv::CvPointPtr(['1x', '2y']) };
-		err_is("");
-		is_deeply($arr2, [ [1, 2] ]);
+		my $x; lives_ok { $x = Cv::CvPointPtr(['1x', '2y']) };
+		is_deeply($x, [ [1, 2] ]);
 	}
 }

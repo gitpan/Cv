@@ -3,9 +3,15 @@
 use strict;
 use warnings;
 # use Test::More qw(no_plan);
-use Test::More tests => 9;
+use Test::More;
+BEGIN {
+	eval { use Cv -nomore };
+	eval { require XSLoader; XSLoader::load('Cv::Test', $Cv::VERSION) };
+	plan skip_all => "no Cv/Test.so" if $@;
+	plan tests => 8;
+}
+use Test::Exception;
 BEGIN { use_ok('Cv', -nomore) }
-BEGIN { use_ok('Cv::Test') }
 
 my ($x, $y, $z) = unpack("f*", pack("f*", map { rand 1 } 0..2));
 my $pt = cvPoint3D32f($x, $y, $z);
@@ -17,22 +23,18 @@ if (1) {
 		is_deeply($pt2, $pt);
 	}
 
-	e { Cv::CvPoint3D32f([]) };
-	err_is("pt is not of type CvPoint3D32f in Cv::CvPoint3D32f");
+	throws_ok { Cv::CvPoint3D32f([]) } qr/pt is not of type CvPoint3D32f in Cv::CvPoint3D32f at $0/;
 
-	e { Cv::CvPoint3D32f([1]) };
-	err_is("pt is not of type CvPoint3D32f in Cv::CvPoint3D32f");
+	throws_ok { Cv::CvPoint3D32f([1]) } qr/pt is not of type CvPoint3D32f in Cv::CvPoint3D32f at $0/;
 
 	{
 		use warnings FATAL => qw(all);
-		e { Cv::CvPoint3D32f(['1x', '2y', '3z']) };
-		err_is("Argument \"1x\" isn't numeric in subroutine entry");
+		throws_ok { Cv::CvPoint3D32f(['1x', '2y', '3z']) } qr/Argument \"1x\" isn't numeric in subroutine entry at $0/;
 	}
 
 	{
 		no warnings 'numeric';
-		my $pt2 = e { Cv::CvPoint3D32f(['1x', '2y', '3z']) };
-		err_is("");
-		is_deeply($pt2, [1, 2, 3]);
+		my $x; lives_ok { $x = Cv::CvPoint3D32f(['1x', '2y', '3z']) };
+		is_deeply($x, [1, 2, 3]);
 	}
 }

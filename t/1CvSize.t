@@ -3,9 +3,15 @@
 use strict;
 use warnings;
 # use Test::More qw(no_plan);
-use Test::More tests => 9;
+use Test::More;
+BEGIN {
+	eval { use Cv -nomore };
+	eval { require XSLoader; XSLoader::load('Cv::Test', $Cv::VERSION) };
+	plan skip_all => "no Cv/Test.so" if $@;
+	plan tests => 8;
+}
+use Test::Exception;
 BEGIN { use_ok('Cv', -nomore) }
-BEGIN { use_ok('Cv::Test') }
 
 my ($width, $height) = map { int rand 16384 } 0..1;
 my $size = Cv::cvSize($width, $height);
@@ -17,21 +23,17 @@ if (1) {
 		is_deeply($size2, $size);
 	}
 
-	e { Cv::CvSize([]) };
-	err_is("size is not of type CvSize in Cv::CvSize");
+	throws_ok { Cv::CvSize([]) } qr/size is not of type CvSize in Cv::CvSize at $0/;
 
 	{
 		use warnings FATAL => qw(all);
-		e { Cv::CvSize(['1x', $height]) };
-		err_is("Argument \"1x\" isn't numeric in subroutine entry");
-		e { Cv::CvSize([$width, '2x']) };
-		err_is("Argument \"2x\" isn't numeric in subroutine entry");
+		throws_ok { Cv::CvSize(['1x', $height]) } qr/Argument \"1x\" isn't numeric in subroutine entry at $0/;
+		throws_ok { Cv::CvSize([$width, '2x']) } qr/Argument \"2x\" isn't numeric in subroutine entry at $0/;
 	}
 
 	{
 		no warnings 'numeric';
-		my $size2 = e { Cv::CvSize(['1x', '2x']) };
-		err_is("");
-		is_deeply($size2, [ 1, 2 ]);
+		my $x; lives_ok { $x = Cv::CvSize(['1x', '2x']) };
+		is_deeply($x, [ 1, 2 ]);
 	}
 }

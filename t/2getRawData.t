@@ -2,10 +2,10 @@
 
 use strict;
 use warnings;
-# use Test::More qw(no_plan);
-use Test::More tests => 36;
+use Test::More qw(no_plan);
+# use Test::More tests => 35;
+use Test::Exception;
 BEGIN { use_ok('Cv', -nomore) }
-BEGIN { use_ok('Cv::Test') }
 
 # ------------------------------------------------------------
 #  void cvGetRawData(CvArr* arr, SV* data, OUT int step, OUT CvSize roiSize)
@@ -33,14 +33,26 @@ for my $class (qw(Cv::Mat Cv::MatND Cv::Image)) {
 	is(length($rawData3), $step * $rows);
 	is(ord(substr($rawData3, 0, 1)), 123);
 
+	if ($mat->isa('Cv::Image')) {
+		my ($y0, $x0) = ($rows/4, $cols/4);
+		my ($rows2, $cols2) = ($rows/2, $cols/2);
+		my $step2 = $cols * $cn;
+		$mat->setImageROI([ $x0, $y0, $cols2, $rows2 ]);
+		$mat->fill(cvScalarAll(45));
+		$mat->getRawData(my $rawData2, my $rawStep2, my $rawSize2);
+		is($rawStep2, $step2);
+		is_deeply($rawSize2, [$cols2, $rows2]);
+		is(length($rawData2), $step2 * $rows2);
+		is(ord(substr($rawData2, 0, 1)), 45);
+		$mat->resetImageROI();
+	}
+
 	# SvREADONLY_on
-	e { substr($rawData, 0, 1) = 'x'; };
-	err_is("Modification of a read-only value attempted");
+	throws_ok { substr($rawData, 0, 1) = 'x'; } qr/Modification of a read-only value attempted at $0/;
 }
 
 if (10) {
 	my $class = qw(Cv::SparseMat);
 	my $mat = $class->new([320, 240], CV_8UC3);
-	e { $mat->getRawData(my $rawData, my $rawStep, my $rawSize) };
-	err_like("OpenCV Error:");
+	throws_ok { $mat->getRawData(my $rawData, my $rawStep, my $rawSize) } qr/OpenCV Error:/;
 }

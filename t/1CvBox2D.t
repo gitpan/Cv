@@ -3,9 +3,15 @@
 use strict;
 use warnings;
 # use Test::More qw(no_plan);
-use Test::More tests => 10;
+use Test::More;
+BEGIN {
+	eval { use Cv -nomore };
+	eval { require XSLoader; XSLoader::load('Cv::Test', $Cv::VERSION) };
+	plan skip_all => "no Cv/Test.so" if $@;
+	plan tests => 9;
+}
+use Test::Exception;
 BEGIN { use_ok('Cv', -nomore) }
-BEGIN { use_ok('Cv::Test') }
 
 my $center = [ unpack("f*", pack("f*", map { rand 1 } 0..1)) ];
 my $size = [ unpack("f*", pack("f*", map { rand 1 } 0..1)) ];
@@ -19,25 +25,20 @@ if (1) {
 		is_deeply($b2, $b);
 	}
 
-	e { Cv::CvBox2D([]) };
-	err_is("box is not of type CvBox2D in Cv::CvBox2D");
+	throws_ok { Cv::CvBox2D([]) } qr/box is not of type CvBox2D in Cv::CvBox2D at $0/;
 
-	e { Cv::CvBox2D(['x', $size, $angle]) };
-	err_is("box is not of type CvBox2D in Cv::CvBox2D");
+	throws_ok { Cv::CvBox2D(['x', $size, $angle]) } qr/box is not of type CvBox2D in Cv::CvBox2D at $0/;
 
-	e { Cv::CvBox2D([$center, 'x', $angle]) };
-	err_is("box is not of type CvBox2D in Cv::CvBox2D");
+	throws_ok { Cv::CvBox2D([$center, 'x', $angle]) } qr/box is not of type CvBox2D in Cv::CvBox2D at $0/;
 
 	{
 		use warnings FATAL => qw(all);
-		e { Cv::CvBox2D([$center, $size, '1.5x']) };
-		err_is("Argument \"1.5x\" isn't numeric in subroutine entry");
+		throws_ok { Cv::CvBox2D([$center, $size, '1.5x']) } qr/Argument \"1\.5x\" isn't numeric in subroutine entry at $0/;
 	}
 
 	{
 		no warnings 'numeric';
-		my $b = e { Cv::CvBox2D([$center, $size, '1.5x']) };
-		err_is('');
-		is_deeply($b, [$center, $size, 1.5]);
+		my $x; lives_ok { $x = Cv::CvBox2D([$center, $size, '1.5x']) };
+		is_deeply($x, [$center, $size, 1.5]);
 	}
 }

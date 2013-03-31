@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Test::More qw(no_plan);
 # use Test::More tests => 10;
+use Test::Exception;
 use version;
 
 BEGIN {
@@ -13,11 +14,9 @@ BEGIN {
 }
 
 if (1) {
-	no warnings;
-	# local $Data::Dumper::Terse = 1;
-	local $Cv::Config::cf = undef;
-	undef *{Cv::Config::cf};
-	undef $ENV{CC}, $ENV{CXX};
+	# no warnings;
+	local $ENV{CC} = undef;
+	local $ENV{CXX} = undef;
 	my $cf = eval { new Cv::Config };
 	like($cf->cvdir, qr{/blib/lib/Cv});
 	like(${$cf->typemaps}[0], qr{/blib/lib/Cv/typemap});
@@ -30,9 +29,7 @@ if (1) {
 }
 
 if (2) {
-	no warnings;
-	# local $Data::Dumper::Terse = 1;
-	local $Cv::Config::cf = undef;
+	# no warnings;
 	my $dynamic_lib = 0;
 	my @cxx = ();
 	for my $cxx (qw(c++ g++ g++-4 g++44 g++45 g++46)) {
@@ -46,7 +43,6 @@ if (2) {
 		push(@cxx, $cxx);
 		delete $ENV{CC};
 		$ENV{CXX} = $cxx;
-		undef *{Cv::Config::cf};
 		my $cf = eval { new Cv::Config };
 		$dynamic_lib++ if $cf->dynamic_lib;
 	}
@@ -55,15 +51,33 @@ if (2) {
 }
 
 if (3) {
-	no warnings;
-	# local $Data::Dumper::Terse = 1;
-	local $Cv::Config::cf = undef;
+	# no warnings;
 	local %Cv::Config::opencv = ();
 	my $include = '/path/to/include';
 	my $define = 'define=something';
 	$Cv::Config::opencv{cflags} = "-I$include -D$define";
-	undef *{Cv::Config::cf};
 	my $cf = eval { new Cv::Config };
 	like($cf->ccflags, qr{-I$include});
 	like($cf->ccflags, qr{-D$define});
+}
+
+# Cv-0.25
+if (4) {
+	# no warnings;
+	my $cf = eval { new Cv::Config };
+	lives_ok { $cf->hasqt };
+}
+
+if (5) {
+	my $lib = '/usr/local/lib';
+	for (
+		[ "$lib/libopencv_core-2.4.so", "-L$lib -lopencv_core" ],
+		[ "$lib/libopencv_core-2.4.dll", "-L$lib -lopencv_core" ],
+		[ "-L$lib -lopencv_core", "-L$lib -lopencv_core" ],
+		) {
+		local $Cv::Config::opencv{libs} = $_->[0];
+		my $cf = eval { new Cv::Config };
+		ok(!defined $cf->{LIBS});
+		is(${$cf->libs}[0], $_->[1]);
+	}
 }
