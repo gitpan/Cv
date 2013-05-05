@@ -1,64 +1,5 @@
 # -*- mode: perl; coding: utf-8; tab-width: 4; -*-
 
-package Cv::Qt;
-
-use 5.008008;
-use strict;
-use warnings;
-use Cv ();
-require Exporter;
-
-our @ISA = qw(Exporter);
-
-my @cv = qw(
-cvSetWindowProperty
-cvGetWindowProperty
-cvFontQt
-cvDisplayOverlay
-cvDisplayStatusBar
-cvSaveWindowParameters
-cvLoadWindowParameters
-);
-
-my @cvarr = qw(
-cvAddText
-);
-
-our %EXPORT_TAGS = ( 'all' => [ @cv, @cvarr ] );
-
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-our @EXPORT = ();
-
-our $VERSION = '0.25';
-
-require XSLoader;
-XSLoader::load('Cv::Qt', $VERSION);
-
-for (@cvarr) {
-	(my $short = $_) =~ s/^cv//;
-	eval <<"----";
-	sub Cv::Arr::$short {
-		goto \&Cv::Qt::$_;
-	}
-----
-	;
-}
-
-for (@cv) {
-	(my $short = $_) =~ s/^cv//;
-	eval <<"----";
-	sub Cv::$short {
-		ref (my \$class = shift) and Carp::croak 'class name needed';
-		goto \&Cv::Qt::$_;
-	}
-----
-	;
-}
-
-1;
-__END__
-
 =encoding utf8
 
 =head1 NAME
@@ -68,6 +9,36 @@ Cv::Qt - Cv extension for Qt
 =head1 SYNOPSIS
 
   use Cv::Qt;
+
+=cut
+
+package Cv::Qt;
+
+use 5.008008;
+use strict;
+use warnings;
+use Cv ();
+
+our $VERSION = '0.26';
+
+require XSLoader;
+XSLoader::load('Cv::Qt', $VERSION);
+
+require Exporter;
+
+our @ISA = qw(Exporter);
+
+our @EXPORT_OK = grep /^(IPL|CV|cv)/, (keys %Cv::Qt::);
+
+our %EXPORT_TAGS = (
+	'all' => \@EXPORT_OK,
+	);
+
+our @EXPORT = ( );
+
+# ============================================================
+#  highgui. High-level GUI and Media I/O: Qt new functions
+# ============================================================
 
 =head1 DESCRIPTION
 
@@ -82,12 +53,25 @@ Cv::Qt - Cv extension for Qt
 
 L<cvAddText()|http://docs.opencv.org/search.html?q=cvAddText>
 
+=cut
+
+sub Cv::Arr::cvAddText { goto &cvAddText }
+sub Cv::cvAddText { goto &cvAddText }
+push(@Cv::EXPORT_OK, 'cvAddText');
+
+
 =item cvDisplayOverlay
 
  cvDisplayOverlay($name, $text, $delay)
  Cv->displayOverlay($name, $text, $delay)
 
 L<cvDisplayOverlay()|http://docs.opencv.org/search.html?q=cvDisplayOverlay>
+
+=cut
+
+sub Cv::cvDisplayOverlay { goto &cvDisplayOverlay }
+push(@Cv::EXPORT_OK, 'cvDisplayOverlay');
+
 
 =item cvDisplayStatusBar
 
@@ -96,12 +80,24 @@ L<cvDisplayOverlay()|http://docs.opencv.org/search.html?q=cvDisplayOverlay>
 
 L<cvDisplayStatusBar()|http://docs.opencv.org/search.html?q=cvDisplayStatusBar>
 
+=cut
+
+sub Cv::cvDisplayStatusBar { goto &cvDisplayStatusBar }
+push(@Cv::EXPORT_OK, 'cvDisplayStatusBar');
+
+
 =item cvFontQt
 
  cvFontQt($nameFont, $pointSize, $color, $weight, $style, $spacing)
  Cv->fontQt($nameFont, $pointSize, $color, $weight, $style, $spacing)
 
 L<cvFontQt()|http://docs.opencv.org/search.html?q=cvFontQt>
+
+=cut
+
+sub Cv::cvFontQt { goto &cvFontQt }
+push(@Cv::EXPORT_OK, 'cvFontQt');
+
 
 =item cvGetWindowProperty
 
@@ -110,12 +106,24 @@ L<cvFontQt()|http://docs.opencv.org/search.html?q=cvFontQt>
 
 L<cvGetWindowProperty()|http://docs.opencv.org/search.html?q=cvGetWindowProperty>
 
+=cut
+
+sub Cv::cvGetWindowProperty { goto &cvGetWindowProperty }
+push(@Cv::EXPORT_OK, 'cvGetWindowProperty');
+
+
 =item cvSetWindowProperty
 
  cvSetWindowProperty($name, $prop_id, $prop_value)
  Cv->setWindowProperty($name, $prop_id, $prop_value)
 
 L<cvSetWindowProperty()|http://docs.opencv.org/search.html?q=cvSetWindowProperty>
+
+=cut
+
+sub Cv::cvSetWindowProperty { goto &cvSetWindowProperty }
+push(@Cv::EXPORT_OK, 'cvSetWindowProperty');
+
 
 =item cvLoadWindowParameters
 
@@ -124,12 +132,24 @@ L<cvSetWindowProperty()|http://docs.opencv.org/search.html?q=cvSetWindowProperty
 
 L<cvLoadWindowParameters()|http://docs.opencv.org/search.html?q=cvLoadWindowParameters>
 
+=cut
+
+sub Cv::cvLoadWindowParameters { goto &cvLoadWindowParameters }
+push(@Cv::EXPORT_OK, 'cvLoadWindowParameters');
+
+
 =item cvSaveWindowParameters
 
  cvSaveWindowParameters($name)
  Cv->saveWindowParameters($name)
 
 L<cvSaveWindowParameters()|http://docs.opencv.org/search.html?q=cvSaveWindowParameters>
+
+=cut
+
+sub Cv::cvSaveWindowParameters { goto &cvSaveWindowParameters }
+push(@Cv::EXPORT_OK, 'cvSaveWindowParameters');
+
 
 =item cvCreateOpenGLCallback
 
@@ -139,8 +159,19 @@ TBD
 
 TBD
 
+=cut
+
+{ package Cv; our @BUTTON; }
+
+sub Cv::cvCreateButton { goto &cvCreateButton }
+push(@Cv::EXPORT_OK, 'cvCreateButton');
+
 =back
 
+=cut
+
+1;
+__END__
 
 =head2 EXPORT
 
@@ -158,7 +189,7 @@ MASUDA Yuta E<lt>yuta.cpan@gmail.comE<gt>
 
 =head1 LICENCE
 
-Copyright (c) 2010, 2011, 2012 by Masuda Yuta.
+Copyright (c) 2013 by MASUDA Yuta.
 
 All rights reserved. This program is free software; you can
 redistribute it and/or modify it under the same terms as Perl itself.

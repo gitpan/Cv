@@ -10,12 +10,16 @@ if ($@) {
 	warn "=" x 60, "\n";
 	warn "See README to install this module\n";
 	warn "=" x 60, "\n";
-	exit 1;
+	exit 0;
 }
 
 my $cf = new Cv::Config;
 
-my %PREREQ_PM = (
+WriteMakefile(
+	NAME => 'Cv::Qt',
+	VERSION_FROM => 'lib/Cv/Qt.pm',
+	ABSTRACT_FROM => 'lib/Cv/Qt.pm',
+	AUTHOR => 'MASUDA Yuta <yuta.cpan@gmail.com>',
 	PREREQ_PM => {
 		ExtUtils::ParseXS => 2.22,
 		ExtUtils::PkgConfig => 1.12,
@@ -23,15 +27,8 @@ my %PREREQ_PM = (
 		Test::Exception => 0.31,
 		$^O eq 'cygwin' ? (ExtUtils::MM_Cygwin => 6.62) : (),
 	},
-);
-
-WriteMakefile(
-	NAME => 'Cv::Qt',
-	VERSION_FROM => 'lib/Cv/Qt.pm',
-	ABSTRACT_FROM => 'lib/Cv/Qt.pm',
-	AUTHOR => 'MASUDA Yuta <yuta.cpan@gmail.com>',
-	%PREREQ_PM,
 	%Cv::Config::MM,
+	depend => { 'Qt.xs' => '../lib/Cv/Cv.inc' },
 	INC => '-I. -I..',
 	XSOPT => '-C++ -hiertype',
 );
