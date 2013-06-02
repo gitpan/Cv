@@ -8,10 +8,10 @@ use warnings;
 
 use Cv::Seq::Point;
 
-our $VERSION = '0.28';
+our $VERSION = '0.29';
 our @ISA = qw(Cv::Seq::Point);
 
-# { no strict 'refs'; *AUTOLOAD = \&Cv::autoload; }
+{ no strict 'refs'; *AUTOLOAD = \&Cv::autoload; }
 
 sub template {
 	my $self = CORE::shift;

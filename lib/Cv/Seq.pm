@@ -6,19 +6,21 @@ use 5.008008;
 use strict;
 use warnings;
 
-our $VERSION = '0.28';
+our $VERSION = '0.29';
 
 use Cv::Seq::Point;
 use Cv::Seq::Point2;
 use Cv::Seq::Circle;
 use Cv::Seq::Rect;
 use Cv::Seq::SURFPoint;
+use Cv::Seq::SURFDescriptor;
 
 package Cv::Seq::Seq;
 
 # our @ISA = qw(Cv::Seq);
 
 { *Get = \&GetSeqElem }
+{ *Push = \&SeqPush }
 
 package Cv::Seq;
 
